@@ -299,19 +299,19 @@
                             <template x-for="(msg, index) in activeChatHistory" :key="index">
                                 <div class="w-full flex flex-col">
                                     
-                                    <div x-show="msg.senderId === 'system_alert'" class="self-center bg-blue-50 text-blue-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-blue-200 my-1 font-medium">
+                                    <div x-show="msg.isSystemAlert" class="self-center bg-blue-50 text-blue-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-blue-200 my-1 font-medium">
                                         <span x-text="msg.text"></span>
                                     </div>
 
-                                    <div x-show="msg.senderId === mySessionId" class="self-end flex flex-col w-full max-w-[85%] items-end">
+                                    <div x-show="msg.senderId === mySessionId && !msg.isSystemAlert" class="self-end flex flex-col w-full max-w-[85%] items-end">
                                         <div class="flex gap-2 w-full justify-end">
                                             <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
                                     
-                                    <div x-show="msg.senderId !== mySessionId && msg.senderId !== 'system_alert'" class="self-start flex flex-col w-full max-w-[85%]">
+                                    <div x-show="msg.senderId !== mySessionId && !msg.isSystemAlert" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
-                                            <img :src="msg.avatarUrl" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            <img :src="msg.senderProfile?.avatarUrl" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
                                             <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
@@ -426,19 +426,29 @@
                     if (pendingChat) {
                         const targetTutor = JSON.parse(pendingChat);
                         
+                        let myProfile = { 
+                            name: this.profile.name, 
+                            strand: this.profile.strand, 
+                            bio: this.profile.bio, 
+                            subjects: this.profile.subjects, 
+                            avatarUrl: this.finalAvatarUrl,
+                            role: "student" 
+                        };
+
                         // Ensure this tutor is added to our history so they show up in the contacts list
                         const existingMessages = this.allMessages.filter(msg => msg.senderId === targetTutor.id || msg.targetContactId === targetTutor.id);
                         
                         if (existingMessages.length === 0) {
                             const connectionMsg = {
                                 type: 'chat',
-                                senderId: 'system_alert',
-                                targetContactId: this.mySessionId,
-                                senderName: 'System',
-                                avatarUrl: '',
-                                senderProfile: targetTutor, // We sneak the tutor's profile into the contact list here
-                                text: `You connected with ${targetTutor.name}. Send a message to start chatting!`
+                                senderId: targetTutor.id, // Fake it coming from Tutor to align perfectly
+                                targetContactId: this.mySessionId, // Going to Student
+                                senderProfile: targetTutor, // Tutor Profile
+                                targetProfile: myProfile, // Student Profile
+                                text: `(System: You are now connected with ${targetTutor.name}. Send a message to start chatting!)`,
+                                isSystemAlert: true
                             };
+                            
                             this.allMessages.push(connectionMsg);
                             localStorage.setItem('studyio_student_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
                         }
@@ -448,8 +458,8 @@
                         this.rebuildContacts();
                         
                         setTimeout(() => {
-                            const contactToSelect = this.contacts.find(c => c.id === targetTutor.id) || targetTutor;
-                            this.selectContact(contactToSelect);
+                            const contactToSelect = this.contacts.find(c => c.id === targetTutor.id);
+                            if (contactToSelect) this.selectContact(contactToSelect);
                         }, 100);
 
                         // Erase the handoff so it doesn't happen again on refresh
@@ -520,22 +530,31 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** INBOX LOGIC & ROLE PARSING ***
+                // *** INBOX LOGIC & SYMMETRICAL PROFILE PARSING ***
                 rebuildContacts() {
                     const uniqueContacts = {};
                     
                     this.allMessages.forEach(msg => {
-                        // Create contact cards for anyone who isn't the student themselves
-                        if (msg.senderId !== this.mySessionId && msg.senderProfile) {
-                            uniqueContacts[msg.senderProfile.name || msg.senderId] = {
-                                id: msg.senderProfile.name || msg.senderId,
-                                name: msg.senderProfile.name || msg.senderName,
-                                avatarUrl: msg.avatarUrl || msg.senderProfile.avatarUrl,
-                                strand: msg.senderProfile.strand || 'Tutor',
-                                bio: msg.senderProfile.bio || '',
-                                subjects: msg.senderProfile.subjects || [],
-                                hourlyRate: msg.senderProfile.hourlyRate || 0,
-                                role: msg.senderProfile.role || 'tutor'
+                        let contactProfile = null;
+                        
+                        if (msg.senderId === this.mySessionId && msg.targetProfile) {
+                            // I sent this message. The person I am talking to is the target.
+                            contactProfile = msg.targetProfile;
+                        } else if (msg.targetContactId === this.mySessionId && msg.senderProfile) {
+                            // I received this message. The person I am talking to is the sender.
+                            contactProfile = msg.senderProfile;
+                        }
+
+                        if (contactProfile && contactProfile.name) {
+                            uniqueContacts[contactProfile.name] = {
+                                id: contactProfile.name,
+                                name: contactProfile.name,
+                                avatarUrl: contactProfile.avatarUrl || '',
+                                strand: contactProfile.strand || 'Not Specified',
+                                bio: contactProfile.bio || '',
+                                subjects: contactProfile.subjects || [],
+                                hourlyRate: contactProfile.hourlyRate || 0,
+                                role: contactProfile.role || 'user'
                             };
                         }
                     });
@@ -567,6 +586,7 @@
                         strand: this.profile.strand, 
                         bio: this.profile.bio, 
                         subjects: this.profile.subjects, 
+                        avatarUrl: this.finalAvatarUrl,
                         role: "student" 
                     };
 
@@ -574,10 +594,10 @@
                         type: 'chat', 
                         senderId: this.mySessionId, // STABLE ID
                         targetContactId: this.activeContact.id, // Mark who this is for (The Tutor)
-                        senderName: this.profile.name, 
-                        avatarUrl: this.finalAvatarUrl, 
                         senderProfile: myProfile, // Securely attach the Student Profile Card
-                        text: this.inboxMessage 
+                        targetProfile: this.activeContact, // Pass the contact we are talking to
+                        text: this.inboxMessage,
+                        timestamp: Date.now()
                     };
 
                     // 1. Broadcast to the specific tutor's room over live MQTT
@@ -591,7 +611,7 @@
                     localStorage.setItem(sKey, JSON.stringify(sHist));
 
                     // 3. Write directly to Tutor's local memory vault (GUARANTEE DELIVERY)
-                    let tKey = 'studyio_tutor_inbox_history_' + this.activeContact.name;
+                    let tKey = 'studyio_tutor_inbox_history_' + this.activeContact.id;
                     let tHist = JSON.parse(localStorage.getItem(tKey) || '[]');
                     tHist.push(payload);
                     localStorage.setItem(tKey, JSON.stringify(tHist));
