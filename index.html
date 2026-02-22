@@ -820,11 +820,10 @@
     </div>
 
     <script>
-        // Supabase initialized with SessionStorage for Tab Isolation
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
-            { auth: { storage: window.sessionStorage } }
+            { auth: { storage: window.sessionStorage } } // *** TAB ISOLATION ***
         );
 
         function appData() {
@@ -863,42 +862,56 @@
                 newTutorAlert: false, 
                 
                 init() {
-                    // *** 1. CHECK FOR A RETURNING SUPABASE SESSION FIRST ***
-                    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                        if (session) {
-                            const user = session.user;
-                            const fullName = user.user_metadata.full_name || user.email.split('@')[0];
-                            const avatar = user.user_metadata.avatar_url || '';
-                            
-                            this.currentUser = { 
-                                name: fullName, 
-                                email: user.email, 
-                                role: 'student' 
-                            };
-                            
-                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
-                            
-                            if (!sessionStorage.getItem('studyio_student_profile')) {
-                                const blankStudentProfile = {
+                    // *** 1. CATCH LOGOUT REDIRECT ***
+                    if (window.location.search.includes('logged_out=1')) {
+                        sessionStorage.clear(); // Complete tab memory wipe
+                        localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Kill the ghost token!
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        this.currentUser = null;
+                        supabaseClient.auth.signOut().catch(()=>{}); 
+                    }
+
+                    // *** 2. LISTEN TO SUPABASE FOR SECURE OAUTH REDIRECTS ***
+                    supabaseClient.auth.onAuthStateChange((event, session) => {
+                        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                            if (session && session.user.app_metadata.provider === 'google') {
+                                const user = session.user;
+                                const fullName = user.user_metadata.full_name || user.email.split('@')[0];
+                                const avatar = user.user_metadata.avatar_url || '';
+                                
+                                this.currentUser = { 
+                                    name: fullName, 
+                                    email: user.email, 
+                                    role: 'student' 
+                                };
+                                
+                                sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                                
+                                // Recreate profile for this specific Google user dynamically
+                                const studentProfile = {
                                     name: fullName, strand: "Unspecified", bio: "Ready to learn!", headerColor: "bg-gray-800", avatarUrl: avatar, coverImageUrl: "", subjects: []
                                 };
-                                sessionStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                                sessionStorage.setItem('studyio_student_profile', JSON.stringify(studentProfile));
                             }
-                        } else {
-                            // *** 2. CHECK LOCAL MEMORY (TAB-ISOLATED VIA SESSIONSTORAGE) ***
-                            if (window.location.search.includes('logged_out=1')) {
-                                sessionStorage.removeItem('studyio_current_user');
-                                window.history.replaceState({}, document.title, window.location.pathname);
-                                this.currentUser = null;
-                            } else {
-                                const savedSession = sessionStorage.getItem('studyio_current_user');
-                                if (savedSession) { this.currentUser = JSON.parse(savedSession); }
-                            }
+                        } else if (event === 'SIGNED_OUT') {
+                            this.currentUser = null;
+                            sessionStorage.clear();
                         }
                     });
 
+                    // *** 3. LOAD MOCK MEMORY FOR MANUAL LOGINS ***
+                    setTimeout(() => {
+                        if (!this.currentUser) {
+                            const savedSession = sessionStorage.getItem('studyio_current_user');
+                            if (savedSession) { this.currentUser = JSON.parse(savedSession); }
+                        }
+                    }, 200);
+
+                    // Check saved application tracker
                     const savedApp = sessionStorage.getItem('studyio_my_application');
-                    if (savedApp) { this.myApplication = JSON.parse(savedApp); }
+                    if (savedApp) { 
+                        this.myApplication = JSON.parse(savedApp); 
+                    }
 
                     // *** BACK-BUTTON CACHE FIX ***
                     window.addEventListener('pageshow', (event) => {
@@ -1052,7 +1065,7 @@
                             options: {
                                 redirectTo: window.location.origin + window.location.pathname,
                                 queryParams: {
-                                    prompt: 'select_account' // Forces Google Account picker
+                                    prompt: 'consent' // FORCES GOOGLE TO SHOW ACCOUNT PICKER
                                 }
                             }
                         });
@@ -1102,7 +1115,8 @@
 
                 async logout() { 
                     this.currentUser = null; 
-                    sessionStorage.removeItem('studyio_current_user');
+                    sessionStorage.clear(); // Destroy all session data
+                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Kill ghost tokens
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.reload(); 
                 },
