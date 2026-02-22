@@ -97,7 +97,7 @@
 
                     <div class="flex items-center gap-2 text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
                         <img :src="getNavbarAvatar()" class="w-7 h-7 rounded-full object-cover border border-gray-300">
-                        <span class="font-semibold text-sm truncate max-w-[100px]" x-text="currentUser ? currentUser.name : ''"></span>
+                        <span class="font-semibold text-sm truncate max-w-[100px]" x-text="getNavbarName()"></span>
                     </div>
                     <button @click="logout()" class="text-sm text-gray-500 hover:text-oxfordRed transition font-medium">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out
@@ -139,7 +139,7 @@
                     <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
                         <img :src="getNavbarAvatar()" class="w-10 h-10 rounded-full object-cover border border-gray-300">
                         <div>
-                            <div class="font-bold text-gray-800 text-sm" x-text="currentUser?.name"></div>
+                            <div class="font-bold text-gray-800 text-sm" x-text="getNavbarName()"></div>
                             <div class="text-xs text-gray-500 uppercase" x-text="currentUser?.role"></div>
                         </div>
                     </div>
@@ -802,7 +802,7 @@
                                 <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm md:text-base shadow-sm leading-relaxed" x-text="msg.text"></div>
                                 <div class="w-9 h-9 rounded-full bg-gray-200 flex justify-center items-center text-xs shadow-sm flex-shrink-0 font-bold overflow-hidden border border-gray-300">
                                     <img x-show="msg.avatarUrl" :src="msg.avatarUrl" class="w-full h-full object-cover">
-                                    <span x-show="!msg.avatarUrl" class="text-gray-600" x-text="currentUser ? currentUser.name.charAt(0).toUpperCase() : 'M'"></span>
+                                    <span x-show="!msg.avatarUrl" class="text-gray-600" x-text="getNavbarName().charAt(0).toUpperCase()"></span>
                                 </div>
                             </div>
                         </div>
@@ -1068,9 +1068,24 @@
                         if (p && p.avatarUrl) return p.avatarUrl;
                     }
                     
-                    // Fall back to the Google Avatar injected into the session, or the UI generator
                     if (this.currentUser.avatar) return this.currentUser.avatar;
-                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.currentUser.name)}&background=b91c1c&color=fff&bold=true`;
+                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getNavbarName())}&background=b91c1c&color=fff&bold=true`;
+                },
+
+                // *** DYNAMIC NAME SYNC ***
+                getNavbarName() {
+                    if (!this.currentUser) return '';
+                    
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.name) return p.name;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.name) return p.name;
+                    }
+                    
+                    return this.currentUser.name;
                 },
 
                 // *** GOOGLE LOGIC WITH PROMPT FIX ***
@@ -1183,7 +1198,6 @@
                             if (existingApps) {
                                 existingApps = JSON.parse(existingApps);
                             } else {
-                                // Provide defaults just in case Admin Dashboard has never been opened
                                 existingApps = [
                                     { id: 101, name: "Miguel Cruz", email: "miguel.cruz@gmail.com", strand: "Grade 12 - STEM", age: 18, contact: "+63 917 123 4567", hourlyRate: 150, subjects: ["General Chemistry 1", "Basic Calculus"], bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." },
                                     { id: 102, name: "Isabella Reyes", email: "isa.reyes22@yahoo.com", strand: "Grade 12 - HUMSS", age: 17, contact: "+63 918 987 6543", hourlyRate: 120, subjects: ["Creative Writing", "Philippine Politics and Governance"], bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" }
@@ -1260,7 +1274,7 @@
                 sendMessage() { 
                     if (this.newMessage.trim() === '') return; 
                     
-                    const myName = this.currentUser ? this.currentUser.name : "Student";
+                    const myName = this.getNavbarName() || "Student";
                     let myAvatar = this.getNavbarAvatar(); 
                     
                     this.mqttClient.publish(this.chatTopic, JSON.stringify({ 
