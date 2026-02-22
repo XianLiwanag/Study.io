@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study.io | Admin Command Center</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = { 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        oxfordRed: '#b91c1c', 
+                        oxfordDark: '#7f1d1d' 
+                    }, 
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'] 
+                    } 
+                } 
+            } 
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .table-scroll::-webkit-scrollbar { height: 6px; }
+        .table-scroll::-webkit-scrollbar-track { background: transparent; }
+        .table-scroll::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 20px; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800" x-data="adminApp()">
+
+    <nav class="bg-gray-900 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 sm:h-20 items-center">
+            
+            <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" onclick="window.location.href='index.html'">
+                <div class="bg-oxfordRed text-white p-1.5 sm:p-2 rounded-lg">
+                    <i class="fa-solid fa-shield-halved text-lg sm:text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold text-white leading-tight">Study.io</h1>
+                    <p class="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-widest leading-tight">Admin Portal</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 sm:gap-6">
+                <span class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full bg-green-900 text-green-400 border border-green-700 animate-pulse hidden md:inline-flex items-center">
+                    <i class="fa-solid fa-satellite-dish mr-1"></i> Live Network Sync
+                </span>
+                
+                <div class="h-6 w-px bg-gray-700 mx-1 sm:mx-2 hidden md:block"></div>
+
+                <a href="index.html" class="text-gray-300 hover:text-white transition text-xs sm:text-sm flex items-center gap-2 border border-gray-700 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-md hover:bg-gray-800">
+                    <i class="fa-solid fa-arrow-left"></i> 
+                    <span class="hidden sm:inline">Back to Main Site</span>
+                    <span class="sm:hidden">Home</span>
+                </a>
+                
+                <div class="flex items-center gap-2 text-gray-200">
+                    <div class="w-7 h-7 sm:w-8 h-8 rounded-full bg-oxfordRed flex items-center justify-center font-bold text-xs sm:text-sm shadow-inner">A</div>
+                    <span class="font-medium text-sm hidden sm:inline" x-text="currentUser ? currentUser.name : 'Super Admin'"></span>
+                </div>
+
+                <button @click="logout()" class="text-gray-400 hover:text-white transition p-2 sm:p-0 sm:ml-2">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-lg sm:text-base"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+                <button @click="resetDemo()" class="text-xs text-gray-400 hover:text-oxfordRed underline transition bg-gray-50 px-3 py-1.5 rounded-md sm:bg-transparent sm:px-0 sm:py-0 border border-gray-200 sm:border-0">
+                    <i class="fa-solid fa-rotate-left mr-1 sm:hidden"></i> Reset Demo Data
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                <div class="bg-gray-50 border border-gray-200 p-4 sm:p-5 rounded-xl shadow-sm flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4">
+                    <div class="bg-blue-100 text-blue-700 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <div class="text-xl sm:text-2xl font-bold text-gray-800">5,241</div>
+                        <div class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Total Students</div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 border border-green-500 p-4 sm:p-5 rounded-xl shadow-md flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-1 sm:w-2 h-full bg-green-500 hidden sm:block"></div>
+                    <div class="absolute top-0 left-0 w-full h-1 bg-green-500 sm:hidden"></div>
+                    <div class="bg-green-100 text-green-700 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                    <div>
+                        <div class="text-xl sm:text-2xl font-bold text-gray-800" x-text="activeTutors.length"></div>
+                        <div class="text-[10px] sm:text-xs text-green-600 uppercase font-bold">Active Tutors</div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 border border-oxfordRed p-4 sm:p-5 rounded-xl shadow-md flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-1 sm:w-2 h-full bg-oxfordRed hidden sm:block"></div>
+                    <div class="absolute top-0 left-0 w-full h-1 bg-oxfordRed sm:hidden"></div>
+                    <div class="bg-red-100 text-oxfordRed w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-xl animate-pulse flex-shrink-0">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                    </div>
+                    <div>
+                        <div class="text-xl sm:text-2xl font-bold text-gray-800" x-text="applications.length"></div>
+                        <div class="text-[10px] sm:text-xs text-oxfordRed uppercase font-bold">Pending Review</div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 border border-gray-200 p-4 sm:p-5 rounded-xl shadow-sm flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4">
+                    <div class="bg-purple-100 text-purple-700 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <div class="text-xl sm:text-2xl font-bold text-gray-800">₱0</div>
+                        <div class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Platform Fees</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 min-h-[50vh]">
+        
+        <div class="flex gap-2 sm:gap-4 mb-6 border-b border-gray-200 overflow-x-auto table-scroll pb-1">
+            <button @click="activeTab = 'pending'" :class="activeTab === 'pending' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap px-3 sm:px-4 py-2 font-bold text-xs sm:text-sm uppercase tracking-wide border-b-2 transition">
+                Pending Applications (<span x-text="applications.length"></span>)
+            </button>
+            <button @click="activeTab = 'active'" :class="activeTab === 'active' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap px-3 sm:px-4 py-2 font-bold text-xs sm:text-sm uppercase tracking-wide border-b-2 transition">
+                Active Tutors (<span x-text="activeTutors.length"></span>)
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            
+            <div x-show="activeTab === 'pending'">
+                <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50">
+                    <h3 class="font-bold text-base sm:text-lg text-gray-800">Awaiting Approval</h3>
+                </div>
+                
+                <div class="overflow-x-auto table-scroll">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-white text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold">Applicant Name</th>
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold">Grade & Strand</th>
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold">Top Subjects</th>
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="app in applications" :key="app.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4">
+                                        <div class="flex items-center gap-3">
+                                            <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(app.name)}&background=f3f4f6&color=374151`" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200 flex-shrink-0">
+                                            <div>
+                                                <div class="font-bold text-gray-800 text-xs sm:text-sm" x-text="app.name"></div>
+                                                <div class="text-[10px] sm:text-xs text-gray-500" x-text="app.email"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4">
+                                        <span class="inline-flex px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200 shadow-sm whitespace-nowrap" x-text="app.strand"></span>
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600">
+                                        <div class="truncate max-w-[150px] sm:max-w-xs" x-text="app.subjects.join(', ')"></div>
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-right space-x-1 sm:space-x-2 whitespace-nowrap">
+                                        <button @click="reviewApplication(app)" class="text-gray-600 hover:text-blue-600 text-[10px] sm:text-sm font-bold border border-gray-300 px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-white shadow-sm transition">
+                                            Review
+                                        </button>
+                                        <button @click="approveApplicant(app.id)" class="text-white bg-green-600 hover:bg-green-700 text-[10px] sm:text-sm font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded shadow-sm transition border border-green-700">
+                                            Approve
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            
+                            <tr x-show="applications.length === 0" x-cloak>
+                                <td colspan="4" class="px-4 sm:px-6 py-12 text-center text-gray-500">
+                                    <div class="text-3xl sm:text-4xl mb-3 text-gray-300"><i class="fa-solid fa-check-circle"></i></div>
+                                    <p class="text-base sm:text-lg font-medium text-gray-800">All caught up!</p>
+                                    <p class="text-xs sm:text-sm mt-1">There are no pending tutor applications right now.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div x-show="activeTab === 'active'" x-cloak>
+                <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50">
+                    <h3 class="font-bold text-base sm:text-lg text-gray-800">Manage Live Platform Profiles</h3>
+                </div>
+                
+                <div class="overflow-x-auto table-scroll">
+                    <table class="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                            <tr class="bg-white text-[10px] sm:text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold">Tutor Name</th>
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold">Strand</th>
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold">Rate</th>
+                                <th class="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <template x-for="tutor in activeTutors" :key="tutor.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4">
+                                        <div class="flex items-center gap-3">
+                                            <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=e5e7eb&color=374151`" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200 flex-shrink-0">
+                                            <div class="font-bold text-gray-800 text-xs sm:text-sm whitespace-nowrap" x-text="tutor.name"></div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4">
+                                        <span class="inline-flex px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200 shadow-sm whitespace-nowrap" x-text="tutor.strand"></span>
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-bold text-oxfordRed">
+                                        ₱<span x-text="tutor.hourlyRate"></span>/hr
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-right">
+                                        <button @click="deleteTutor(tutor.id)" class="text-red-600 hover:text-white hover:bg-red-600 text-[10px] sm:text-sm font-bold border border-red-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded shadow-sm transition whitespace-nowrap">
+                                            <i class="fa-solid fa-trash mr-1"></i> Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div x-cloak x-show="isReviewOpen" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-end sm:items-center justify-center min-h-screen px-0 sm:px-4 pt-4 pb-0 sm:pb-20 text-center">
+            
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" @click="isReviewOpen = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+            
+            <div class="inline-block align-bottom sm:align-middle bg-white rounded-t-2xl sm:rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl w-full max-h-[90vh] flex flex-col">
+                
+                <div class="bg-gray-50 px-5 py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+                    <h3 class="text-base sm:text-lg font-bold text-gray-800">
+                        <i class="fa-solid fa-file-lines text-oxfordRed mr-2"></i> Applicant Review
+                    </h3>
+                    <button @click="isReviewOpen = false" class="text-gray-400 hover:text-gray-600 transition p-2 -mr-2">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="px-5 py-6 overflow-y-auto flex-1" x-show="selectedApplicant">
+                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                        <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedApplicant?.name || '')}&background=f3f4f6&color=374151`" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-gray-200 flex-shrink-0">
+                        <div class="min-w-0">
+                            <h2 class="text-lg sm:text-2xl font-bold text-gray-800 truncate" x-text="selectedApplicant?.name"></h2>
+                            <p class="text-xs sm:text-sm text-gray-500 truncate" x-text="selectedApplicant?.email"></p>
+                        </div>
+                        <div class="ml-auto text-right flex-shrink-0">
+                            <div class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Rate</div>
+                            <div class="text-lg sm:text-xl font-bold text-green-600">₱<span x-text="selectedApplicant?.hourlyRate"></span><span class="text-xs font-normal">/hr</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <h4 class="text-[10px] sm:text-xs text-gray-500 uppercase font-bold mb-1">Grade & Strand</h4>
+                            <p class="font-medium text-gray-800 text-sm" x-text="selectedApplicant?.strand"></p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <h4 class="text-[10px] sm:text-xs text-gray-500 uppercase font-bold mb-1">Age / Contact</h4>
+                            <p class="font-medium text-gray-800 text-sm"><span x-text="selectedApplicant?.age"></span> yrs old • <span x-text="selectedApplicant?.contact"></span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-[10px] sm:text-xs text-gray-500 uppercase font-bold mb-2">Teaching Bio</h4>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-900 italic shadow-inner">
+                            "<span x-text="selectedApplicant?.bio"></span>"
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-[10px] sm:text-xs text-gray-500 uppercase font-bold mb-2">Subjects to Teach</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="sub in selectedApplicant?.subjects">
+                                <span class="text-xs bg-white border border-gray-200 text-gray-700 px-3 py-1 rounded-full shadow-sm" x-text="sub"></span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-100 px-5 py-4 flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 gap-3 sm:gap-0 flex-shrink-0 pb-safe">
+                    <button @click="rejectApplicant(selectedApplicant?.id)" class="w-full sm:w-auto text-red-600 hover:bg-red-50 border border-red-200 bg-white sm:bg-transparent sm:border-transparent font-bold px-4 py-2.5 sm:py-2 rounded transition shadow-sm sm:shadow-none order-2 sm:order-1 text-sm">
+                        Reject Application
+                    </button>
+                    
+                    <div class="flex w-full sm:w-auto gap-3 order-1 sm:order-2">
+                        <button @click="isReviewOpen = false" class="flex-1 sm:flex-none text-gray-600 bg-white border border-gray-300 font-bold px-4 py-2.5 sm:py-2 rounded shadow-sm hover:bg-gray-50 transition text-sm">
+                            Cancel
+                        </button>
+                        <button @click="approveApplicant(selectedApplicant?.id)" class="flex-1 sm:flex-none text-white bg-green-600 font-bold px-6 py-2.5 sm:py-2 rounded shadow-md hover:bg-green-700 transition border border-green-700 text-sm whitespace-nowrap">
+                            <i class="fa-solid fa-check mr-1.5"></i> Approve
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col gap-2 pointer-events-none">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="true" 
+                 x-transition:enter="transition ease-out duration-300 transform" 
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-2" 
+                 x-transition:enter-end="opacity-100 translate-y-0" 
+                 x-transition:leave="transition ease-in duration-200 transform" 
+                 x-transition:leave-start="opacity-100" 
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-2" 
+                 class="bg-gray-900 text-white px-5 py-3.5 sm:py-3 rounded-lg shadow-2xl flex items-center gap-3 border-l-4 pointer-events-auto min-w-[250px] max-w-[90vw]" 
+                 :class="toast.type === 'success' ? 'border-green-500' : 'border-red-500'">
+                
+                <i class="fa-solid text-lg sm:text-base flex-shrink-0" :class="toast.type === 'success' ? 'fa-circle-check text-green-400' : 'fa-circle-xmark text-red-400'"></i>
+                <span class="font-medium text-sm leading-tight" x-text="toast.message"></span>
+            </div>
+        </template>
+    </div>
+
+    <script>
+        const supabaseClient = window.supabase.createClient(
+            'https://vdtokaamdrvyzchtepjy.supabase.co', 
+            'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
+            { auth: { storage: window.sessionStorage } } // *** TAB ISOLATION ***
+        );
+
+        function adminApp() {
+            return {
+                currentUser: null,
+                activeTab: 'pending', 
+                isReviewOpen: false,
+                selectedApplicant: null,
+                toasts: [],
+                mqttClient: null,
+                
+                applications: [],
+                activeTutors: [],
+
+                // Default Mock Data
+                defaultApplications: [
+                    { 
+                        id: 101, 
+                        name: "Miguel Cruz", 
+                        email: "miguel.cruz@gmail.com", 
+                        strand: "Grade 12 - STEM", 
+                        age: 18, 
+                        contact: "+63 917 123 4567", 
+                        hourlyRate: 150, 
+                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                        bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
+                    },
+                    { 
+                        id: 102, 
+                        name: "Isabella Reyes", 
+                        email: "isa.reyes22@yahoo.com", 
+                        strand: "Grade 12 - HUMSS", 
+                        age: 17, 
+                        contact: "+63 918 987 6543", 
+                        hourlyRate: 120, 
+                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                        bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
+                    }
+                ],
+                defaultTutors: [
+                    { id: 1, name: "Janella Manansala", strand: "Grade 12 - STEM", hourlyRate: 200 },
+                    { id: 2, name: "Xian Liwanag", strand: "Grade 12 - STEM", hourlyRate: 150 },
+                    { id: 3, name: "Anjela Magcalas", strand: "Grade 12 - STEM", hourlyRate: 250 },
+                    { id: 4, name: "Jasmaine Magcalas", strand: "Grade 12 - STEM", hourlyRate: 180 },
+                    { id: 5, name: "Cedric Santos", strand: "Grade 12 - ABM", hourlyRate: 180 },
+                    { id: 6, name: "Johann Hernandez", strand: "Grade 12 - STEM", hourlyRate: 200 },
+                    { id: 7, name: "Kyle Ikan", strand: "Grade 11 - STEM", hourlyRate: 150 },
+                    { id: 8, name: "Akon Mariano", strand: "Grade 12 - STEM", hourlyRate: 150 },
+                    { id: 9, name: "Ace Magno", strand: "Grade 12 - STEM", hourlyRate: 100 }
+                ],
+
+                init() {
+                    // *** 1. CHECK SESSION STORAGE FIRST (Tab Isolated) ***
+                    const savedSession = sessionStorage.getItem('studyio_current_user');
+                    if (savedSession) { 
+                        this.currentUser = JSON.parse(savedSession); 
+                        if (this.currentUser.role !== 'admin') {
+                            window.location.href = 'index.html'; 
+                        }
+                    } else {
+                        window.location.href = 'index.html'; 
+                    }
+
+                    // CACHE FIX
+                    window.addEventListener('pageshow', (event) => {
+                        if (!sessionStorage.getItem('studyio_current_user')) {
+                            window.location.href = 'index.html'; 
+                        } else {
+                            const user = JSON.parse(sessionStorage.getItem('studyio_current_user'));
+                            if (user.role !== 'admin') {
+                                window.location.href = 'index.html';
+                            }
+                        }
+                    });
+
+                    // Database mock objects stay in localStorage so they sync across tabs!
+                    const savedApps = localStorage.getItem('studyio_admin_apps');
+                    const savedTutors = localStorage.getItem('studyio_admin_tutors');
+                    
+                    if(savedApps) { 
+                        this.applications = JSON.parse(savedApps); 
+                    } else { 
+                        this.applications = [...this.defaultApplications]; 
+                    }
+                    
+                    if(savedTutors) { 
+                        this.activeTutors = JSON.parse(savedTutors); 
+                    } else { 
+                        this.activeTutors = [...this.defaultTutors]; 
+                    }
+
+                    // Connect to MQTT
+                    this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
+                    
+                    this.mqttClient.on('connect', () => { 
+                        this.mqttClient.subscribe('studyio/system/new_application'); 
+                    });
+
+                    this.mqttClient.on('message', (topic, message) => {
+                        if (topic === 'studyio/system/new_application') {
+                            const newApp = JSON.parse(message.toString());
+                            this.applications.unshift(newApp);
+                            this.saveState(); 
+                            this.showToast(`New Application received from ${newApp.name}!`, 'success');
+                        }
+                    });
+                },
+
+                // *** LOGOUT SECURELY CLEARS SESSION STORAGE ***
+                async logout() {
+                    this.currentUser = null;
+                    sessionStorage.removeItem('studyio_current_user');
+                    try { await supabaseClient.auth.signOut(); } catch(e) {}
+                    window.location.href = 'index.html?logged_out=1';
+                },
+
+                saveState() {
+                    localStorage.setItem('studyio_admin_apps', JSON.stringify(this.applications));
+                    localStorage.setItem('studyio_admin_tutors', JSON.stringify(this.activeTutors));
+                },
+
+                resetDemo() {
+                    if(confirm("This will restore the original demo applicants and tutors. Proceed?")) {
+                        this.applications = [...this.defaultApplications];
+                        this.activeTutors = [...this.defaultTutors];
+                        this.saveState();
+                        this.showToast("Demo data has been reset.", "success");
+                    }
+                },
+
+                reviewApplication(applicant) { 
+                    this.selectedApplicant = applicant; 
+                    this.isReviewOpen = true; 
+                },
+
+                approveApplicant(id) {
+                    const applicant = this.applications.find(a => a.id === id);
+                    if(applicant) {
+                        this.applications = this.applications.filter(a => a.id !== id);
+                        this.isReviewOpen = false;
+                        
+                        this.activeTutors.unshift({
+                            id: applicant.id,
+                            name: applicant.name,
+                            strand: applicant.strand,
+                            hourlyRate: applicant.hourlyRate
+                        });
+
+                        this.saveState(); 
+                        this.showToast(`Approved ${applicant.name}. Added to live website!`, 'success');
+                        
+                        const payload = {
+                            type: 'new_tutor_approved',
+                            tutor: {
+                                id: applicant.id,
+                                name: applicant.name,
+                                strand: applicant.strand,
+                                bio: applicant.bio,
+                                subjects: applicant.subjects,
+                                schedule: [{ day: "To Be Announced", time: "TBA" }], 
+                                hourlyRate: applicant.hourlyRate,
+                                headerColor: "bg-gray-800"
+                            }
+                        };
+                        this.mqttClient.publish('studyio/system/new_tutor_approved', JSON.stringify(payload), { retain: true });
+                    }
+                },
+
+                rejectApplicant(id) {
+                    const applicant = this.applications.find(a => a.id === id);
+                    if(applicant) {
+                        this.applications = this.applications.filter(a => a.id !== id);
+                        this.isReviewOpen = false;
+                        
+                        this.saveState(); 
+                        this.showToast(`Application for ${applicant.name} was rejected.`, 'error');
+                        
+                        this.mqttClient.publish('studyio/system/application_rejected', JSON.stringify({ id: id }), { retain: true });
+                    }
+                },
+
+                deleteTutor(id) {
+                    if(confirm("Are you sure you want to permanently remove this tutor from the platform?")) {
+                        this.activeTutors = this.activeTutors.filter(t => t.id !== id);
+                        this.saveState(); 
+                        
+                        this.mqttClient.publish('studyio/system/delete_tutor', JSON.stringify({ type: 'delete_tutor', id: id }), { retain: true });
+                        this.showToast("Tutor successfully removed from platform.", "error");
+                    }
+                },
+
+                showToast(message, type) {
+                    const id = Date.now();
+                    this.toasts.push({ id, message, type });
+                    setTimeout(() => { 
+                        this.toasts = this.toasts.filter(t => t.id !== id); 
+                    }, 4000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

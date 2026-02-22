@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study.io | Tutor Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { 
+                        oxfordRed: '#b91c1c', 
+                        oxfordDark: '#7f1d1d' 
+                    },
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'] 
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .chat-scroll::-webkit-scrollbar { width: 4px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800" x-data="tutorApp()">
+
+    <nav class="bg-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 sm:h-20 items-center">
+            
+            <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" onclick="window.location.href='index.html'">
+                <div class="bg-oxfordRed text-white p-1.5 sm:p-2 rounded-lg">
+                    <i class="fa-solid fa-chalkboard-user text-xl sm:text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-2xl font-bold text-oxfordRed leading-tight">Study.io</h1>
+                    <p class="text-[9px] sm:text-xs text-gray-500 uppercase tracking-widest leading-tight">Tutor Portal</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-4">
+                <span class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full bg-green-100 text-green-700 animate-pulse border border-green-300 hidden md:inline-flex items-center">
+                    <i class="fa-solid fa-wifi mr-1"></i> Live Sync Active
+                </span>
+                
+                <div class="h-6 sm:h-8 w-px bg-gray-300 mx-1 sm:mx-2 hidden sm:block"></div>
+                
+                <a href="index.html" class="text-sm text-gray-600 hover:text-oxfordRed transition font-medium flex items-center gap-1.5 p-2 sm:p-0">
+                    <i class="fa-solid fa-house text-lg sm:text-sm"></i> 
+                    <span class="hidden sm:inline">Home</span>
+                </a>
+                
+                <div class="flex items-center gap-2 text-gray-700 bg-gray-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-gray-200 ml-1 sm:ml-2">
+                    <img :src="finalAvatarUrl" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-gray-300 object-cover">
+                    <span class="font-semibold text-xs sm:text-sm hidden sm:inline truncate max-w-[100px]" x-text="profile.name"></span>
+                </div>
+
+                <button @click="logout()" class="text-sm text-red-600 sm:text-gray-500 hover:text-white sm:hover:text-oxfordRed hover:bg-red-600 sm:hover:bg-red-50 transition font-medium ml-1 sm:ml-2 sm:border border-gray-300 px-2 sm:px-3 py-1.5 rounded-md shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-lg sm:text-sm"></i> 
+                    <span class="hidden sm:inline">Log Out</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 min-h-[70vh]">
+        
+        <div class="lg:col-span-1">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fa-regular fa-eye text-oxfordRed"></i> Live Profile Preview
+            </h3>
+            
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 lg:sticky lg:top-24">
+                <div :class="profile.coverImageUrl ? '' : profile.headerColor" 
+                     :style="profile.coverImageUrl ? `background-image: url('${profile.coverImageUrl}'); background-size: cover; background-position: center;` : ''" 
+                     class="h-24 sm:h-32 relative transition-all duration-300">
+                </div>
+                
+                <div class="px-5 sm:px-6 pb-5 sm:pb-6 relative">
+                    <div class="flex justify-between items-end -mt-10 sm:-mt-12 mb-4">
+                        <img :src="finalAvatarUrl" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white shadow-md bg-white object-cover">
+                        <div class="text-right">
+                            <span class="text-[10px] sm:text-xs text-gray-500 uppercase font-bold tracking-wider">Rate</span><br>
+                            <span class="font-bold text-oxfordRed text-lg sm:text-xl">₱<span x-text="profile.hourlyRate"></span>/hr</span>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 leading-tight" x-text="profile.name || 'Your Name'"></h2>
+                    
+                    <div class="flex flex-wrap items-center text-gray-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2 mb-4 gap-2">
+                        <span class="font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
+                            <i class="fa-solid fa-id-card text-oxfordRed mr-1"></i> <span x-text="profile.strand || 'Strand'"></span>
+                        </span>
+                        <span class="bg-green-100 text-green-800 px-2.5 py-1 rounded-full font-bold border border-green-200">
+                            <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                        </span>
+                    </div>
+                    
+                    <h3 class="font-bold text-gray-800 border-b border-gray-200 pb-1 mb-2 text-xs sm:text-sm">About Me</h3>
+                    <p class="text-gray-600 text-xs sm:text-sm leading-relaxed mb-4 whitespace-pre-wrap" x-text="profile.bio || 'Write your bio here...'"></p>
+                    
+                    <h3 class="font-bold text-gray-800 border-b border-gray-200 pb-1 mb-2 text-xs sm:text-sm">Expertise</h3>
+                    <div class="flex flex-wrap gap-1.5 sm:gap-2 mb-6">
+                        <template x-for="sub in profile.subjects">
+                            <span class="text-[10px] sm:text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
+                                <i class="fa-solid fa-check text-oxfordRed mr-1"></i> <span x-text="sub"></span>
+                            </span>
+                        </template>
+                        <span x-show="profile.subjects.length === 0" class="text-xs text-gray-400 italic">No subjects added.</span>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="font-bold text-gray-800 mb-2 sm:mb-3 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2">
+                            <i class="fa-regular fa-calendar-check text-oxfordRed"></i> Availability
+                        </h3>
+                        <ul class="space-y-1.5 sm:space-y-2">
+                            <template x-for="slot in profile.schedule">
+                                <li class="flex justify-between items-center border-b border-gray-200 pb-1.5 last:border-0 last:pb-0">
+                                    <span class="font-medium text-gray-700 text-[10px] sm:text-xs" x-text="slot.day"></span>
+                                    <span class="text-gray-600 bg-white px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[9px] sm:text-[10px] border border-gray-200 shadow-sm" x-text="slot.time"></span>
+                                </li>
+                            </template>
+                            <span x-show="profile.schedule.length === 0" class="text-xs text-gray-400 italic block mt-1">No schedule added.</span>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2">
+            <div class="bg-white p-5 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6 border-b border-gray-100 pb-4 gap-2">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Edit Profile Settings</h2>
+                        <p class="text-xs sm:text-sm text-gray-500">Changes are automatically saved and broadcasted to the main website in real-time.</p>
+                    </div>
+                    <div class="text-[10px] sm:text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 self-start sm:self-auto inline-flex items-center gap-1">
+                        <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Auto-Saving
+                    </div>
+                </div>
+                
+                <div class="space-y-5 sm:space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                            <input type="text" x-model="profile.name" @input="triggerSync()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Grade & Strand</label>
+                            <input type="text" x-model="profile.strand" @input="triggerSync()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Hourly Rate (₱)</label>
+                            <input type="number" x-model="profile.hourlyRate" @input="triggerSync()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Default Theme Color</label>
+                            <select x-model="profile.headerColor" @change="triggerSync()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm bg-white text-sm">
+                                <option value="bg-oxfordRed">Oxford Red</option>
+                                <option value="bg-yellow-600">ABM Gold</option>
+                                <option value="bg-teal-700">STEM Teal</option>
+                                <option value="bg-indigo-700">HUMSS Indigo</option>
+                                <option value="bg-gray-800">Slate Dark</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 bg-gray-50 p-4 sm:p-5 rounded-xl border border-gray-200">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Profile Picture (URL)</label>
+                            <input type="text" x-model="profile.avatarUrl" @input="triggerSync()" placeholder="Paste image link here..." class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none text-xs sm:text-sm transition shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Cover Photo (URL)</label>
+                            <input type="text" x-model="profile.coverImageUrl" @input="triggerSync()" placeholder="Paste image link here..." class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none text-xs sm:text-sm transition shadow-sm">
+                        </div>
+                        <p class="md:col-span-2 text-[10px] sm:text-xs text-gray-500 italic">
+                            <i class="fa-solid fa-circle-info text-oxfordRed mr-1"></i> Right click any image on the web and select "Copy Image Address" to paste here.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Teaching Bio</label>
+                        <textarea x-model="profile.bio" @input="triggerSync()" rows="4" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm"></textarea>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-5 sm:pt-6">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Subjects You Teach</label>
+                        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
+                            <select x-model="selectedSubjectToAdd" class="flex-1 border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm bg-white text-sm">
+                                <option value="">-- Select a subject from the curriculum to add --</option>
+                                <template x-for="(subjects, category) in groupedSubjects" :key="category">
+                                    <optgroup :label="category">
+                                        <template x-for="sub in subjects" :key="sub">
+                                            <option :value="sub" x-text="sub"></option>
+                                        </template>
+                                    </optgroup>
+                                </template>
+                            </select>
+                            <button @click="addSubject()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Subject</button>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="(sub, index) in profile.subjects" :key="index">
+                                <div class="bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-xs sm:text-sm flex items-center gap-2 sm:gap-3 shadow-sm">
+                                    <span x-text="sub" class="font-medium"></span>
+                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-5 sm:pt-6">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Availability Schedule</label>
+                        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
+                            <select x-model="newScheduleDay" class="border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed w-full sm:w-1/3 focus:outline-none transition shadow-sm bg-white text-sm">
+                                <option value="">Select Day</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                            <input type="text" x-model="newScheduleTime" @keydown.enter.prevent="addSchedule()" placeholder="e.g., 4:00 PM - 6:00 PM" class="flex-1 border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm w-full">
+                            <button @click="addSchedule()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Slot</button>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <template x-for="(slot, index) in profile.schedule" :key="index">
+                                <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg shadow-sm">
+                                    <div class="flex gap-3 sm:gap-4 items-center">
+                                        <span class="font-bold text-gray-800 text-xs sm:text-sm w-20 sm:w-24" x-text="slot.day"></span>
+                                        <span class="text-gray-600 bg-white px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-sm border border-gray-200 shadow-sm" x-text="slot.time"></span>
+                                    </div>
+                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition">
+                                        <i class="fa-solid fa-trash text-xs sm:text-sm"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="fixed bottom-4 right-4 z-50">
+        <button x-show="!chatOpen" @click="chatOpen = true" class="w-14 h-14 sm:w-16 sm:h-16 bg-oxfordRed text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-oxfordDark transition-transform transform hover:scale-105">
+            <i class="fa-solid fa-comments text-2xl sm:text-3xl"></i>
+            <span class="absolute top-0 right-0 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-green-400 border-2 border-white rounded-full"></span>
+        </button>
+        
+        <div x-cloak x-show="chatOpen" class="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 w-full sm:w-[400px] h-[100dvh] sm:h-auto bg-white sm:rounded-t-xl shadow-2xl border-t sm:border border-gray-200 flex flex-col overflow-hidden transition-transform transform z-50">
+            
+            <div class="bg-gray-800 text-white p-3 md:p-4 flex justify-between items-center cursor-pointer flex-shrink-0" @click="chatOpen = false">
+                <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse border border-green-200"></div>
+                    <span class="font-bold text-sm tracking-wide">Tutor Inbox</span>
+                </div>
+                <button class="hover:text-gray-300 transition p-2 -mr-2"><i class="fa-solid fa-chevron-down text-lg"></i></button>
+            </div>
+            
+            <div id="chat-messages-container" class="flex-1 sm:h-80 p-4 bg-gray-50 overflow-y-auto flex flex-col gap-3 chat-scroll">
+                <template x-for="(msg, index) in chatMessages" :key="index">
+                    <div class="w-full flex flex-col">
+                        <div x-show="msg.sender === 'system'" class="self-center bg-yellow-100 text-yellow-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-yellow-200 my-1">
+                            <span x-text="msg.text"></span>
+                        </div>
+                        
+                        <div x-show="msg.sender === 'student'" class="self-start flex flex-col w-full mt-2 max-w-[85%]">
+                            <span class="text-[10px] text-gray-500 ml-11 mb-0.5 font-semibold tracking-wide" x-text="msg.senderName"></span>
+                            <div class="flex gap-2 w-full">
+                                <div class="w-9 h-9 rounded-full bg-gray-300 text-gray-700 flex justify-center items-center text-xs shadow-sm flex-shrink-0 font-bold overflow-hidden border border-gray-300">
+                                    <img x-show="msg.avatarUrl" :src="msg.avatarUrl" class="w-full h-full object-cover">
+                                    <span x-show="!msg.avatarUrl" x-text="msg.senderName ? msg.senderName.charAt(0).toUpperCase() : 'S'"></span>
+                                </div>
+                                <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm md:text-base shadow-sm leading-relaxed" x-text="msg.text"></div>
+                            </div>
+                        </div>
+                        
+                        <div x-show="msg.sender === 'tutor'" class="self-end flex flex-col w-full mt-2 max-w-[85%] items-end">
+                            <span class="text-[10px] text-gray-500 mr-11 mb-0.5 font-semibold tracking-wide">You</span>
+                            <div class="flex gap-2 w-full justify-end">
+                                <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm md:text-base shadow-sm leading-relaxed" x-text="msg.text"></div>
+                                <div class="w-9 h-9 rounded-full bg-gray-200 flex justify-center items-center text-xs shadow-sm flex-shrink-0 font-bold overflow-hidden border border-gray-300">
+                                    <img x-show="msg.avatarUrl" :src="msg.avatarUrl" class="w-full h-full object-cover">
+                                    <span x-show="!msg.avatarUrl" class="text-gray-600" x-text="currentUser ? currentUser.name.charAt(0).toUpperCase() : 'M'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            
+            <div class="p-3 border-t border-gray-200 bg-white flex gap-2 flex-shrink-0 pb-safe">
+                <input type="text" x-model="newMessage" @keydown.enter="sendMessage()" placeholder="Reply to student..." class="flex-1 text-sm md:text-base border border-gray-300 rounded-full px-5 py-2.5 focus:outline-none focus:ring-1 focus:ring-gray-800 focus:border-gray-800 transition shadow-inner">
+                <button @click="sendMessage()" class="bg-gray-800 text-white w-11 h-11 rounded-full flex items-center justify-center hover:bg-black transition shadow-md flex-shrink-0">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseClient = window.supabase.createClient(
+            'https://vdtokaamdrvyzchtepjy.supabase.co', 
+            'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
+            { auth: { storage: window.sessionStorage } } // *** TAB ISOLATION ***
+        );
+
+        function tutorApp() {
+            return {
+                currentUser: null, 
+                profile: {
+                    id: 5,
+                    name: "Cedric Santos", 
+                    strand: "Grade 12 - ABM", 
+                    bio: "Numbers tell a story. I can help you balance your sheets, understand accounting principles, and excel in Business Math.",
+                    hourlyRate: 180, 
+                    headerColor: "bg-yellow-600",
+                    avatarUrl: "", 
+                    coverImageUrl: "",
+                    subjects: ["Fundamentals of Accountancy, Business, & Math 1", "Fundamentals of Accountancy, Business, & Math 2", "Business Math"],
+                    schedule: [{ day: "Tuesday", time: "4:00 PM - 6:00 PM" }]
+                },
+                
+                selectedSubjectToAdd: "", 
+                newScheduleDay: "", 
+                newScheduleTime: "",
+                
+                chatOpen: false, 
+                chatMessages: [], 
+                newMessage: '',
+                mqttClient: null, 
+                mySessionId: 'tutor_' + Math.random().toString(36).substr(2, 9), 
+                chatTopic: null,
+                syncTimer: null, 
+
+                init() {
+                    // *** 1. CHECK SESSION STORAGE FIRST (Tab Isolated) ***
+                    const savedSession = sessionStorage.getItem('studyio_current_user');
+                    if (savedSession) { 
+                        this.currentUser = JSON.parse(savedSession); 
+                    }
+
+                    // Profile data comes from localStorage so updates reflect on the main site
+                    const savedProfile = localStorage.getItem('studyio_tutor_profile');
+                    if (savedProfile) { 
+                        this.profile = JSON.parse(savedProfile); 
+                    }
+
+                    // CACHE FIX
+                    window.addEventListener('pageshow', (event) => {
+                        if (!sessionStorage.getItem('studyio_current_user')) {
+                            window.location.href = 'index.html'; 
+                        } else {
+                            this.currentUser = JSON.parse(sessionStorage.getItem('studyio_current_user'));
+                        }
+                    });
+
+                    // Connect to MQTT
+                    this.chatTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
+                    
+                    this.mqttClient.on('connect', () => {
+                        this.mqttClient.subscribe(this.chatTopic);
+                        this.chatMessages.push({ sender: 'system', text: `You are online. Students viewing ${this.profile.name}'s profile can chat with you here.` });
+                    });
+
+                    this.mqttClient.on('message', (topic, message) => {
+                        const parsedMsg = JSON.parse(message.toString());
+                        if (parsedMsg.type === 'chat') {
+                            this.chatMessages.push({ 
+                                sender: parsedMsg.senderId === this.mySessionId ? 'tutor' : 'student', 
+                                senderName: parsedMsg.senderName || 'Student', 
+                                avatarUrl: parsedMsg.avatarUrl || null,
+                                text: parsedMsg.text 
+                            });
+                            
+                            this.scrollToBottom();
+                            if (!this.chatOpen && parsedMsg.senderId !== this.mySessionId) { 
+                                this.chatOpen = true; 
+                            }
+                        }
+                    });
+                },
+
+                // *** LOGOUT SECURELY CLEARS SESSION STORAGE ***
+                async logout() {
+                    this.currentUser = null;
+                    sessionStorage.removeItem('studyio_current_user');
+                    try { await supabaseClient.auth.signOut(); } catch(e) {}
+                    window.location.href = 'index.html?logged_out=1';
+                },
+
+                get finalAvatarUrl() {
+                    if (this.profile.avatarUrl && this.profile.avatarUrl.trim() !== "") { return this.profile.avatarUrl; }
+                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.profile.name || 'Tutor')}&background=random&color=fff&bold=true`;
+                },
+
+                get groupedSubjects() {
+                    const data = {
+                        "Grade 11": { 
+                            "Core": [
+                                "Physical Education and Health", "General Mathematics", "21st Century Literature", 
+                                "Empowerment Technologies", "Entrepreneurship", "Earth Science", 
+                                "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", 
+                                "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"
+                            ], 
+                            "STEM": ["General Biology 1", "Pre-Calculus", "General Chemistry 1", "General Biology 2", "Basic Calculus"], 
+                            "ABM": ["Organization and Management", "Business Math", "Applied Economics", "Principles of Marketing", "Fundamentals of Accountancy, Business, & Math 1"], 
+                            "HUMSS": ["Introduction to World Religion and Belief System", "Discipline and Ideas in Social Sciences", "Philippine Politics and Governance", "Creative Writing", "Discipline and Ideas in the Applied Social Sciences"], 
+                            "ICT": ["Computer System Servicing 11", "Computer System Servicing (Practical) 11"], 
+                            "HE": ["Cookery 11", "Bread and Pastry Production"] 
+                        },
+                        "Grade 12": { 
+                            "Core": [
+                                "Personal Development", "Oral Communication in Context", "Understanding Culture, Society, and Politics", 
+                                "Pagsulat sa Filipino (Akademik)", "Pagsulat sa Filipino (TekBok)", "Practical Research 2", 
+                                "Contemporary Philippine Arts from the Regions", "Physical Education", "English for Academics and Professional Purposes", 
+                                "Inquiries, Investigation, and Immersion", "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", "Media Information and Literacy"
+                            ], 
+                            "STEM": ["General Physics 1", "General Chemistry 2", "Disaster Readiness and Risk Reduction", "General Physics 2", "Capstone"], 
+                            "ABM": ["Fundamentals of Accountancy, Business, & Math 2", "Physical Science", "Business Finance", "Business Ethics and Social Responsibility", "Business Enterprise and Simulation"], 
+                            "HUMSS": ["Creative Non-Fiction", "Physical Science", "Community, Engagement, Solidarity and Citizenship", "Trends, Networks, and Critical Thinking", "Culminating Activity"], 
+                            "ICT": ["Computer Servicing System 12", "Physical Science", "Computer System Servicing 12", "Computer System Servicing (Practical) 12"], 
+                            "HE": ["Cookery 12", "Physical Science", "Food and Beverage Services"] 
+                        }
+                    };
+                    let groups = {};
+                    for (const grade in data) { 
+                        for (const strand in data[grade]) { 
+                            groups[`${grade} - ${strand}`] = data[grade][strand]; 
+                        } 
+                    }
+                    return groups;
+                },
+
+                triggerSync() {
+                    localStorage.setItem('studyio_tutor_profile', JSON.stringify(this.profile));
+                    clearTimeout(this.syncTimer);
+                    this.syncTimer = setTimeout(() => {
+                        const cleanProfileToSync = JSON.parse(JSON.stringify(this.profile));
+                        this.mqttClient.publish('studyio/system/profile_updates', JSON.stringify({ type: 'profile_update', profile: cleanProfileToSync }), { retain: true });
+                        const newTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        if (newTopic !== this.chatTopic) {
+                            this.mqttClient.unsubscribe(this.chatTopic);
+                            this.chatTopic = newTopic;
+                            this.mqttClient.subscribe(this.chatTopic);
+                        }
+                    }, 500);
+                },
+
+                addSubject() { 
+                    if (this.selectedSubjectToAdd !== '') { 
+                        if (!this.profile.subjects.includes(this.selectedSubjectToAdd)) { 
+                            this.profile.subjects.push(this.selectedSubjectToAdd); 
+                            this.triggerSync(); 
+                        } 
+                        this.selectedSubjectToAdd = ''; 
+                    } 
+                },
+                removeSubject(index) { 
+                    this.profile.subjects.splice(index, 1); 
+                    this.triggerSync(); 
+                },
+                addSchedule() { 
+                    if (this.newScheduleDay !== '' && this.newScheduleTime.trim() !== '') { 
+                        this.profile.schedule.push({ day: this.newScheduleDay, time: this.newScheduleTime.trim() }); 
+                        this.newScheduleDay = ''; 
+                        this.newScheduleTime = ''; 
+                        this.triggerSync(); 
+                    } 
+                },
+                removeSchedule(index) { 
+                    this.profile.schedule.splice(index, 1); 
+                    this.triggerSync(); 
+                },
+
+                sendMessage() { 
+                    if (this.newMessage.trim() === '') return; 
+                    
+                    this.mqttClient.publish(this.chatTopic, JSON.stringify({ 
+                        type: 'chat', 
+                        senderId: this.mySessionId, 
+                        senderName: this.profile.name, 
+                        avatarUrl: this.finalAvatarUrl, 
+                        text: this.newMessage 
+                    })); 
+                    this.newMessage = ''; 
+                },
+                
+                scrollToBottom() { 
+                    setTimeout(() => { 
+                        const c = document.getElementById('chat-messages-container'); 
+                        if (c) c.scrollTop = c.scrollHeight; 
+                    }, 50); 
+                }
+            }
+        }
+    </script>
+</body>
+</html>
