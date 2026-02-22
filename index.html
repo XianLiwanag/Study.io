@@ -972,6 +972,7 @@
                                 tutorsData[tutorIndex].subjects = updatedProfile.subjects ? [...updatedProfile.subjects] : [];
                                 tutorsData[tutorIndex].schedule = updatedProfile.schedule ? [...updatedProfile.schedule] : [];
                                 
+                                syncDirectoryToStorage(); // <-- LIVE SYNC FIX
                                 handleFilters(); 
                                 
                                 if(selectedTutorId === updatedProfile.id) { 
@@ -985,6 +986,7 @@
                             const newTutor = parsedMsg.tutor;
                             if(!tutorsData.find(t => t.id === newTutor.id)) {
                                 tutorsData.unshift(newTutor); 
+                                syncDirectoryToStorage(); // <-- LIVE SYNC FIX
                                 handleFilters(); 
                                 this.newTutorAlert = true;
                                 setTimeout(() => { this.newTutorAlert = false; }, 4000);
@@ -1015,6 +1017,7 @@
                             
                             if (tutorIndex !== -1) {
                                 tutorsData.splice(tutorIndex, 1);
+                                syncDirectoryToStorage(); // <-- LIVE SYNC FIX
                                 handleFilters();
                                 if(selectedTutorId === idToRemove) { closeProfile(); }
                             }
@@ -1354,6 +1357,68 @@
             }
         ];
 
+        // *** MASTER SYNC VAULT FIX ***
+        // This ensures the main website always remembers changes even after a refresh!
+        function reconstructDatabase() {
+            let hasChanges = false;
+            
+            // 1. Load from Global Directory Vault if it exists
+            const savedDirectory = localStorage.getItem('studyio_public_directory');
+            if (savedDirectory) {
+                tutorsData = JSON.parse(savedDirectory);
+            }
+
+            // 2. Sync with Admin's Master List (Handles background approvals/deletions)
+            const adminTutors = localStorage.getItem('studyio_admin_tutors');
+            if (adminTutors) {
+                const parsedAdmin = JSON.parse(adminTutors);
+                
+                // Remove deleted tutors
+                const originalLength = tutorsData.length;
+                tutorsData = tutorsData.filter(t => parsedAdmin.some(at => at.id === t.id));
+                if (tutorsData.length !== originalLength) hasChanges = true;
+
+                // Add newly approved tutors that might have been missed by MQTT
+                parsedAdmin.forEach(at => {
+                    if (!tutorsData.some(t => t.id === at.id)) {
+                        tutorsData.unshift({
+                            id: at.id, name: at.name, strand: at.strand, hourlyRate: at.hourlyRate,
+                            bio: "New tutor on the platform.", subjects: [], schedule: [], headerColor: "bg-gray-800"
+                        });
+                        hasChanges = true;
+                    }
+                });
+            }
+
+            // 3. Sync with specific Tutor Profile edits (Handles background dashboard edits)
+            const savedProfile = localStorage.getItem('studyio_tutor_profile');
+            if (savedProfile) {
+                const p = JSON.parse(savedProfile);
+                const index = tutorsData.findIndex(t => t.id === p.id);
+                if (index !== -1) {
+                    if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) {
+                        tutorsData[index] = { ...tutorsData[index], ...p };
+                        hasChanges = true;
+                    }
+                } else {
+                    tutorsData.unshift(p);
+                    hasChanges = true;
+                }
+            }
+
+            if (hasChanges) {
+                localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData));
+            }
+        }
+
+        // Run the reconstruction immediately on load
+        reconstructDatabase();
+        
+        // This function updates the local vault whenever a live MQTT update happens
+        function syncDirectoryToStorage() {
+            localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData));
+        }
+
         const curriculumData = {
             "Grade 11": { 
                 "Core": ["Physical Education and Health", "General Mathematics", "21st Century Literature", "Empowerment Technologies", "Entrepreneurship", "Earth Science", "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"], 
@@ -1466,7 +1531,7 @@
                     <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition overflow-hidden border border-gray-100 flex flex-col group cursor-pointer sm:cursor-auto" onclick="if(window.innerWidth < 640) openProfile(${tutor.id})">
                         <div class="h-20 sm:h-24 ${headerClass} relative transition-all duration-300" style="${headerStyle}">
                             <div class="absolute -bottom-6 sm:-bottom-8 left-4 sm:left-6">
-                                <img src="${finalAvatar}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-white shadow-sm object-cover">
+                                <img src="${finalAvatar}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-white shadow-sm object-cover bg-white">
                             </div>
                         </div>
                         <div class="pt-8 sm:pt-10 px-5 sm:px-6 pb-5 sm:pb-6 flex-1 flex flex-col pointer-events-none sm:pointer-events-auto">
