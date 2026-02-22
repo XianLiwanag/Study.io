@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study.io | Premium SHS Matchmaking</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = { 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        oxfordRed: '#b91c1c', 
+                        oxfordDark: '#7f1d1d' 
+                    }, 
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'] 
+                    } 
+                } 
+            } 
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        html { scroll-behavior: smooth; }
+        
+        /* Modal Transitions for Vanilla JS */
+        #profile-modal { transition: opacity 0.3s ease; }
+        #profile-modal-content { transition: transform 0.3s ease; }
+        .modal-hidden { opacity: 0; pointer-events: none; }
+        .modal-hidden #profile-modal-content { transform: scale(0.95); }
+        .modal-visible { opacity: 1; pointer-events: auto; }
+        .modal-visible #profile-modal-content { transform: scale(1); }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800" x-data="appData()">
+
+    <nav class="bg-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                
+                <div class="flex items-center gap-3 cursor-pointer" onclick="window.scrollTo(0,0)">
+                    <div class="bg-oxfordRed text-white p-2 rounded-lg">
+                        <i class="fa-solid fa-graduation-cap text-xl sm:text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-oxfordRed leading-tight">Study.io</h1>
+                        <p class="text-[10px] sm:text-xs text-gray-500 uppercase tracking-widest leading-tight">Excellence</p>
+                    </div>
+                </div>
+                
+                <div class="hidden md:flex flex-1 mx-10">
+                    <div class="relative w-full max-w-md">
+                        <input type="text" id="global-search-desktop" placeholder="Find a tutor by name or subject..." class="w-full border border-gray-300 rounded-full py-2 px-5 focus:outline-none focus:ring-2 focus:ring-oxfordRed text-sm">
+                        <button class="absolute right-3 top-2 text-oxfordRed">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="hidden lg:flex items-center gap-4 mr-4">
+                    <a href="#about" class="text-gray-600 hover:text-oxfordRed font-medium transition text-sm">About</a>
+                    <a href="#faq" class="text-gray-600 hover:text-oxfordRed font-medium transition text-sm">FAQ</a>
+                    <a href="#contact" class="text-gray-600 hover:text-oxfordRed font-medium transition text-sm">Contact</a>
+                </div>
+
+                <div class="hidden md:flex items-center gap-3" x-show="!currentUser">
+                    <button x-show="myApplication" x-cloak @click="statusModalOpen = true" class="text-oxfordRed font-semibold hover:bg-red-50 transition border border-oxfordRed px-3 py-2 rounded-md text-sm">
+                        <i class="fa-solid fa-clipboard-user mr-1"></i> Application Status
+                    </button>
+                    <button @click="loginModalOpen = true" class="text-gray-600 hover:text-oxfordRed font-medium transition text-sm">Log In</button>
+                    <button @click="openModal('student')" class="border border-oxfordRed text-oxfordRed px-4 py-2 rounded-md font-semibold hover:bg-oxfordRed hover:text-white transition text-sm">Sign Up</button>
+                    <button x-show="!myApplication" @click="openModal('tutor')" class="bg-oxfordRed text-white px-4 py-2 rounded-md font-semibold hover:bg-oxfordDark transition shadow-lg shadow-red-200 text-sm">Become a Tutor</button>
+                </div>
+
+                <div class="hidden md:flex items-center gap-4" x-show="currentUser" x-cloak>
+                    
+                    <a href="tutor-dashboard.html" x-show="currentUser?.role === 'tutor'" class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-black transition flex items-center gap-2">
+                        <i class="fa-solid fa-chalkboard-user"></i> My Dashboard
+                    </a>
+                    <a href="student-dashboard.html" x-show="currentUser?.role === 'student'" class="bg-oxfordRed text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-oxfordDark transition flex items-center gap-2">
+                        <i class="fa-solid fa-user-pen"></i> My Profile
+                    </a>
+                    <a href="admin-dashboard.html" x-show="currentUser?.role === 'admin'" class="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-black transition flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved"></i> Admin Panel
+                    </a>
+
+                    <div class="flex items-center gap-2 text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+                        <img :src="navAvatar" class="w-7 h-7 rounded-full object-cover border border-gray-300 bg-white">
+                        <span class="font-semibold text-sm truncate max-w-[100px]" x-text="navName"></span>
+                    </div>
+                    <button @click="logout()" class="text-sm text-gray-500 hover:text-oxfordRed transition font-medium">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out
+                    </button>
+                </div>
+
+                <div class="md:hidden flex items-center">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-600 hover:text-oxfordRed focus:outline-none p-2 text-2xl">
+                        <i class="fa-solid" :class="mobileMenuOpen ? 'fa-xmark' : 'fa-bars'"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="mobileMenuOpen" x-collapse class="md:hidden bg-white border-t border-gray-100 shadow-xl absolute w-full left-0 z-40">
+            <div class="px-4 pt-4 pb-6 space-y-4">
+                
+                <div class="relative w-full">
+                    <input type="text" id="global-search-mobile" placeholder="Find a tutor or subject..." class="w-full border border-gray-300 rounded-full py-2 px-5 focus:outline-none focus:ring-2 focus:ring-oxfordRed text-sm">
+                    <button class="absolute right-4 top-2.5 text-oxfordRed text-sm"><i class="fa-solid fa-search"></i></button>
+                </div>
+
+                <div class="flex flex-col space-y-3 pt-2 border-t border-gray-100">
+                    <a href="#about" @click="mobileMenuOpen = false" class="text-gray-700 font-medium">About Us</a>
+                    <a href="#faq" @click="mobileMenuOpen = false" class="text-gray-700 font-medium">FAQ</a>
+                    <a href="#contact" @click="mobileMenuOpen = false" class="text-gray-700 font-medium">Contact</a>
+                </div>
+
+                <div x-show="!currentUser" class="flex flex-col space-y-3 pt-4 border-t border-gray-100">
+                    <button x-show="myApplication" @click="statusModalOpen = true; mobileMenuOpen = false" class="w-full text-center text-oxfordRed border border-oxfordRed px-4 py-2 rounded-md font-semibold text-sm">
+                        <i class="fa-solid fa-clipboard-user mr-1"></i> Check Application
+                    </button>
+                    <button @click="loginModalOpen = true; mobileMenuOpen = false" class="w-full text-center text-gray-700 bg-gray-100 px-4 py-2 rounded-md font-semibold text-sm">Log In</button>
+                    <button @click="openModal('student'); mobileMenuOpen = false" class="w-full text-center border border-oxfordRed text-oxfordRed px-4 py-2 rounded-md font-semibold text-sm">Sign Up as Student</button>
+                    <button x-show="!myApplication" @click="openModal('tutor'); mobileMenuOpen = false" class="w-full text-center bg-oxfordRed text-white px-4 py-2 rounded-md font-semibold text-sm shadow-md">Apply as Tutor</button>
+                </div>
+
+                <div x-show="currentUser" class="pt-4 border-t border-gray-100" x-cloak>
+                    <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                        <img :src="navAvatar" class="w-10 h-10 rounded-full object-cover border border-gray-300 bg-white">
+                        <div>
+                            <div class="font-bold text-gray-800 text-sm" x-text="navName"></div>
+                            <div class="text-xs text-gray-500 uppercase" x-text="currentUser?.role"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col space-y-2">
+                        <a href="tutor-dashboard.html" x-show="currentUser?.role === 'tutor'" class="w-full text-center bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm block">
+                            <i class="fa-solid fa-chalkboard-user mr-2"></i> My Dashboard
+                        </a>
+                        <a href="student-dashboard.html" x-show="currentUser?.role === 'student'" class="w-full text-center bg-oxfordRed text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm block">
+                            <i class="fa-solid fa-user-pen mr-2"></i> My Profile
+                        </a>
+                        <a href="admin-dashboard.html" x-show="currentUser?.role === 'admin'" class="w-full text-center bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm block">
+                            <i class="fa-solid fa-shield-halved mr-2"></i> Admin Panel
+                        </a>
+                        <button @click="logout(); mobileMenuOpen = false" class="w-full text-center text-red-600 bg-red-50 px-4 py-2 rounded-md font-bold text-sm border border-red-100 mt-2">
+                            <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Log Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-oxfordRed text-white relative">
+        <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/school.png')]"></div>
+        <div class="max-w-7xl mx-auto px-4 py-16 md:py-24 relative z-10 flex flex-col md:flex-row items-center text-center md:text-left">
+            <div class="md:w-1/2 space-y-6 flex flex-col items-center md:items-start">
+                <span class="bg-white/20 px-4 py-1 rounded-full text-xs font-semibold backdrop-blur-sm tracking-wider uppercase">Academic Year 2025-2026</span>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">Master Your Strand.<br class="hidden md:block"> Ace Your Future.</h1>
+                <p class="text-base md:text-lg text-red-100 max-w-md mx-auto md:mx-0 leading-relaxed">Premium matchmaking for SHS students. Connect with top-tier STEM, ABM, and HUMSS tutors directly.</p>
+                <button @click="scrollTo('tutors')" class="bg-white text-oxfordRed px-8 py-3 md:py-4 rounded-full font-bold hover:bg-gray-100 transition shadow-xl w-full sm:w-auto">Find a Tutor Now</button>
+            </div>
+            
+            <div class="md:w-1/2 w-full mt-12 md:mt-0 grid grid-cols-2 gap-4 sm:gap-6 relative z-10">
+                
+                <div class="absolute -top-6 -right-6 text-yellow-400 opacity-50 animate-pulse hidden md:block z-0">
+                    <i class="fa-solid fa-sparkles text-4xl"></i>
+                </div>
+
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-oxfordRed relative overflow-hidden group hover:-translate-y-2 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-red-50 transition-colors z-0">
+                        <i class="fa-solid fa-chalkboard-user text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="text-oxfordRed text-3xl md:text-4xl font-bold mb-1 relative z-10">250+</div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Active Tutors</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">Ready to help you succeed.</div>
+                </div>
+                
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:-translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-green-500 relative overflow-hidden group hover:-translate-y-6 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-green-50 transition-colors z-0">
+                        <i class="fa-solid fa-chart-line text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="text-green-600 text-3xl md:text-4xl font-bold mb-1 relative z-10">99.7%</div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Pass Rate</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">Proven academic excellence.</div>
+                </div>
+
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-blue-500 relative overflow-hidden group hover:-translate-y-2 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-blue-50 transition-colors z-0">
+                        <i class="fa-solid fa-clock-rotate-left text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="text-blue-600 text-3xl md:text-4xl font-bold mb-1 relative z-10">10k+</div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Hours Taught</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">Dedicated peer learning.</div>
+                </div>
+
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:-translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-yellow-400 relative overflow-hidden group hover:-translate-y-6 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-yellow-50 transition-colors z-0">
+                        <i class="fa-solid fa-star text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="flex items-center gap-1 mb-1 relative z-10">
+                        <div class="text-yellow-500 text-3xl md:text-4xl font-bold">4.9</div>
+                        <div class="text-yellow-400 text-sm flex flex-col -space-y-1.5 mt-1 hidden sm:flex">
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                    </div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Average Rating</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">From verified students.</div>
+                </div>
+                
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-3 z-20 border border-gray-700 animate-bounce hidden md:flex">
+                    <div class="flex -space-x-2">
+                        <img class="w-7 h-7 rounded-full border border-gray-800 bg-white" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="">
+                        <img class="w-7 h-7 rounded-full border border-gray-800 bg-white" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" alt="">
+                        <img class="w-7 h-7 rounded-full border border-gray-800 bg-white" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nala" alt="">
+                    </div>
+                    <span class="text-xs font-bold tracking-wider uppercase">Join 5,000+ Users</span>
+                </div>
+            </div>
+            </div>
+    </header>
+
+    <main id="tutors" class="max-w-7xl mx-auto px-4 py-12 md:py-16 flex flex-col md:flex-row gap-8 min-h-[80vh]">
+        
+        <aside class="w-full md:w-1/3 lg:w-1/4">
+            
+            <button @click="mobileFiltersOpen = !mobileFiltersOpen" class="w-full md:hidden bg-white border border-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg shadow-sm flex justify-between items-center mb-4">
+                <span><i class="fa-solid fa-filter text-oxfordRed mr-2"></i> Filter Tutors</span>
+                <i class="fa-solid transition-transform" :class="mobileFiltersOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            </button>
+
+            <div :class="mobileFiltersOpen ? 'block' : 'hidden md:block'" class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-oxfordRed md:sticky md:top-24">
+                <h3 class="font-bold text-xl mb-6 hidden md:flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-oxfordRed"></i> Find a Tutor
+                </h3>
+                
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Grade Level</label>
+                    <select id="grade-filter" class="w-full border-gray-300 rounded-md py-2.5 px-3 border focus:ring-2 focus:ring-oxfordRed focus:border-oxfordRed text-sm shadow-sm transition">
+                        <option value="">All Grades</option>
+                        <option value="Grade 11">Grade 11</option>
+                        <option value="Grade 12">Grade 12</option>
+                    </select>
+                </div>
+                
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Academic Strand</label>
+                    <select id="strand-filter" class="w-full border-gray-300 rounded-md py-2.5 px-3 border focus:ring-2 focus:ring-oxfordRed focus:border-oxfordRed text-sm shadow-sm transition">
+                        <option value="">All Strands</option>
+                        <option value="STEM">STEM</option>
+                        <option value="ABM">ABM</option>
+                        <option value="HUMSS">HUMSS</option>
+                        <option value="ICT">ICT</option>
+                        <option value="HE">HE</option>
+                    </select>
+                </div>
+                
+                <div class="mb-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Specific Subject</label>
+                    <select id="subject-filter" class="w-full border-gray-300 rounded-md py-2.5 px-3 border focus:ring-2 focus:ring-oxfordRed focus:border-oxfordRed text-sm shadow-sm transition">
+                        <option value="">All Subjects</option>
+                    </select>
+                </div>
+            </div>
+        </aside>
+
+        <section class="w-full md:w-2/3 lg:w-3/4">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight">Available Tutors</h2>
+                
+                <span x-show="newTutorAlert" x-cloak class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full animate-bounce shadow-sm border border-green-200 inline-flex items-center w-max">
+                    <i class="fa-solid fa-bell mr-2"></i> New Tutor Live!
+                </span>
+            </div>
+            
+            <div id="tutor-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+            
+            <div id="empty-state" class="hidden text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
+                <i class="fa-solid fa-folder-open text-5xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl font-bold text-gray-700">No tutors found.</h3>
+                <p class="text-sm text-gray-500 mt-1">Try adjusting your grade or strand filters.</p>
+            </div>
+        </section>
+    </main>
+
+    <section id="about" class="bg-white py-16 md:py-24 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+                <div class="lg:w-1/2">
+                    <span class="text-oxfordRed font-bold tracking-wider uppercase text-sm">Our Mission</span>
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mt-2 mb-6 leading-tight">Empowering Students Through Peer Education</h2>
+                    <p class="text-gray-600 leading-relaxed mb-4 text-sm md:text-base">Study.io was founded with a single vision: to democratize high-quality education for Senior High School students. We believe that some of the best educators are peers who have just mastered the material themselves.</p>
+                    <p class="text-gray-600 leading-relaxed mb-8 text-sm md:text-base">Our platform securely bridges the gap between students struggling with complex strand-specific subjects and top-performing peers eager to monetize their academic expertise.</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="flex items-start gap-4">
+                            <div class="bg-red-50 p-3 rounded-lg text-oxfordRed flex-shrink-0">
+                                <i class="fa-solid fa-bullseye text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800">Targeted Learning</h4>
+                                <p class="text-sm text-gray-500 mt-1 leading-snug">Curriculum-matched tutoring for every SHS strand.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="bg-red-50 p-3 rounded-lg text-oxfordRed flex-shrink-0">
+                                <i class="fa-solid fa-handshake text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800">Safe Matchmaking</h4>
+                                <p class="text-sm text-gray-500 mt-1 leading-snug">Verified peers and transparent communication channels.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:w-1/2 w-full">
+                    <div class="bg-gray-100 rounded-3xl p-8 relative overflow-hidden h-72 md:h-96 flex items-center justify-center border border-gray-200 shadow-inner">
+                        <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                        <div class="text-center relative z-10 px-4">
+                            <i class="fa-solid fa-quote-left text-3xl md:text-4xl text-gray-300 mb-4"></i>
+                            <h3 class="text-xl md:text-2xl font-bold text-gray-700 max-w-md mx-auto leading-snug">"Teaching is the highest form of understanding."</h3>
+                            <p class="text-gray-500 mt-4 font-medium">— Aristotle</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="bg-gray-50 py-16 md:py-24 border-t border-gray-200 relative">
+        <div class="max-w-4xl mx-auto px-4 relative z-10" x-data="{ activeAccordion: null }">
+            <div class="text-center mb-12">
+                <span class="text-oxfordRed font-bold tracking-wider uppercase text-sm">Got Questions?</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mt-2">Frequently Asked Questions</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                    <button @click="activeAccordion = activeAccordion === 1 ? null : 1" class="w-full text-left px-5 py-5 md:px-6 md:py-6 hover:bg-gray-50 flex justify-between items-center transition-colors focus:outline-none">
+                        <span class="font-bold text-gray-800 text-base md:text-lg pr-4" :class="activeAccordion === 1 ? 'text-oxfordRed' : ''">How are payments handled on the platform?</span>
+                        <i class="fa-solid transition-transform duration-300 flex-shrink-0" :class="activeAccordion === 1 ? 'fa-minus text-oxfordRed rotate-180' : 'fa-plus text-gray-400'"></i>
+                    </button>
+                    <div x-show="activeAccordion === 1" x-collapse>
+                        <div class="px-5 pb-5 md:px-6 md:pb-6 pt-1 text-gray-600 text-sm md:text-base leading-relaxed border-t border-gray-100 mt-2">
+                            Study.io acts solely as a matchmaking service. We do not process payments through the website. All financial transactions should be agreed upon and handled directly between the student and the tutor via methods like GCash, Maya, or cash.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                    <button @click="activeAccordion = activeAccordion === 2 ? null : 2" class="w-full text-left px-5 py-5 md:px-6 md:py-6 hover:bg-gray-50 flex justify-between items-center transition-colors focus:outline-none">
+                        <span class="font-bold text-gray-800 text-base md:text-lg pr-4" :class="activeAccordion === 2 ? 'text-oxfordRed' : ''">Are the tutors verified?</span>
+                        <i class="fa-solid transition-transform duration-300 flex-shrink-0" :class="activeAccordion === 2 ? 'fa-minus text-oxfordRed rotate-180' : 'fa-plus text-gray-400'"></i>
+                    </button>
+                    <div x-show="activeAccordion === 2" x-collapse>
+                        <div class="px-5 pb-5 md:px-6 md:pb-6 pt-1 text-gray-600 text-sm md:text-base leading-relaxed border-t border-gray-100 mt-2">
+                            Yes! All registered tutors on Study.io undergo a vetting process to ensure they possess the academic excellence and communication skills required to effectively teach their subjects.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                    <button @click="activeAccordion = activeAccordion === 3 ? null : 3" class="w-full text-left px-5 py-5 md:px-6 md:py-6 hover:bg-gray-50 flex justify-between items-center transition-colors focus:outline-none">
+                        <span class="font-bold text-gray-800 text-base md:text-lg pr-4" :class="activeAccordion === 3 ? 'text-oxfordRed' : ''">Where do the tutoring sessions take place?</span>
+                        <i class="fa-solid transition-transform duration-300 flex-shrink-0" :class="activeAccordion === 3 ? 'fa-minus text-oxfordRed rotate-180' : 'fa-plus text-gray-400'"></i>
+                    </button>
+                    <div x-show="activeAccordion === 3" x-collapse>
+                        <div class="px-5 pb-5 md:px-6 md:pb-6 pt-1 text-gray-600 text-sm md:text-base leading-relaxed border-t border-gray-100 mt-2">
+                            The medium of instruction is flexible. Once you connect with a tutor using our messaging feature, you can agree upon a platform that works best—whether online via Zoom/Discord, or an in-person session on campus.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="bg-white py-16 md:py-24 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <span class="text-oxfordRed font-bold tracking-wider uppercase text-sm">Get in Touch</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mt-2">Contact Our Support Team</h2>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-12 max-w-5xl mx-auto">
+                <div class="lg:w-1/3 space-y-4 md:space-y-6">
+                    <div class="bg-gray-50 p-5 md:p-6 rounded-xl border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+                        <div class="bg-white p-3 md:p-4 rounded-full text-oxfordRed shadow-sm flex-shrink-0">
+                            <i class="fa-solid fa-envelope text-lg md:text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm md:text-base">Email Us</h4>
+                            <p class="text-xs md:text-sm text-gray-500 mt-1">support@study.io</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-5 md:p-6 rounded-xl border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+                        <div class="bg-white p-3 md:p-4 rounded-full text-oxfordRed shadow-sm flex-shrink-0">
+                            <i class="fa-solid fa-phone text-lg md:text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm md:text-base">Call Us</h4>
+                            <p class="text-xs md:text-sm text-gray-500 mt-1">+1 (555) 123-4567</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-5 md:p-6 rounded-xl border border-gray-100 flex items-center gap-4 hover:shadow-md transition">
+                        <div class="bg-white p-3 md:p-4 rounded-full text-oxfordRed shadow-sm flex-shrink-0">
+                            <i class="fa-solid fa-location-dot text-lg md:text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm md:text-base">Headquarters</h4>
+                            <p class="text-xs md:text-sm text-gray-500 mt-1">Oxford Grace Campus<br>Manila, Philippines</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lg:w-2/3 bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-gray-100">
+                    <form @submit.prevent="alert('Message Sent Successfully!')" class="space-y-5 md:space-y-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Name</label>
+                                <input type="text" required class="w-full border border-gray-300 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-oxfordRed text-sm transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email Address</label>
+                                <input type="email" required class="w-full border border-gray-300 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-oxfordRed text-sm transition">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Subject</label>
+                            <input type="text" required class="w-full border border-gray-300 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-oxfordRed text-sm transition">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Message</label>
+                            <textarea rows="4" required class="w-full border border-gray-300 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-oxfordRed text-sm transition"></textarea>
+                        </div>
+                        <button type="submit" class="bg-oxfordRed text-white px-8 py-3.5 rounded-md font-bold hover:bg-oxfordDark transition w-full shadow-md">
+                            Send Message
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-gray-900 text-white py-12 md:py-16">
+        <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8 border-b border-gray-800 pb-10 mb-8">
+            <div class="col-span-1 md:col-span-2">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-oxfordRed text-white p-2 rounded-lg">
+                        <i class="fa-solid fa-graduation-cap text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold">Study.io</h2>
+                </div>
+                <p class="text-gray-400 text-sm leading-relaxed max-w-sm">
+                    The premier peer-to-peer tutoring network for Senior High School students. Empowering learners through structured, specialized curriculum matchmaking.
+                </p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 text-gray-100 uppercase tracking-wider text-sm">Quick Links</h4>
+                <ul class="space-y-3 text-sm text-gray-400">
+                    <li><a href="#about" class="hover:text-white transition flex items-center gap-2"><i class="fa-solid fa-angle-right text-xs"></i> About Us</a></li>
+                    <li><a href="#faq" class="hover:text-white transition flex items-center gap-2"><i class="fa-solid fa-angle-right text-xs"></i> FAQ</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 text-gray-100 uppercase tracking-wider text-sm">Support</h4>
+                <ul class="space-y-3 text-sm text-gray-400">
+                    <li><a href="#contact" class="hover:text-white transition flex items-center gap-2"><i class="fa-solid fa-angle-right text-xs"></i> Contact Us</a></li>
+                    <li><a href="#" @click.prevent="legalOpen = true" class="hover:text-white transition flex items-center gap-2"><i class="fa-solid fa-angle-right text-xs"></i> Legal & Terms</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="text-center text-gray-500 text-sm flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto px-4 gap-4">
+            <span>&copy; 2026 Study.io. All Rights Reserved.</span>
+            <span class="flex gap-4">
+                <a href="#" class="hover:text-white transition"><i class="fa-brands fa-facebook text-lg"></i></a>
+                <a href="#" class="hover:text-white transition"><i class="fa-brands fa-twitter text-lg"></i></a>
+                <a href="#" class="hover:text-white transition"><i class="fa-brands fa-instagram text-lg"></i></a>
+            </span>
+        </div>
+    </footer>
+
+    <div x-cloak x-show="statusModalOpen" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" @click="statusModalOpen = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+            
+            <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+                
+                <div class="bg-oxfordRed px-5 py-4 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-clipboard-check mr-2"></i> Application Status</h3>
+                    <button @click="statusModalOpen = false" class="text-white hover:text-gray-200 transition"><i class="fa-solid fa-times"></i></button>
+                </div>
+                
+                <div class="px-5 py-6 sm:px-6" x-show="myApplication">
+                    <p class="text-sm text-gray-500 mb-4">Here is the current status of the tutor application you submitted.</p>
+                    
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Status</span>
+                            
+                            <span x-show="myApplication?.status === 'Pending'" class="bg-yellow-100 text-yellow-800 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full border border-yellow-300 animate-pulse text-center">Pending Review</span>
+                            <span x-show="myApplication?.status === 'Approved'" class="bg-green-100 text-green-800 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full border border-green-300 shadow-sm text-center">Approved!</span>
+                            <span x-show="myApplication?.status === 'Rejected'" class="bg-red-100 text-red-800 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full border border-red-300 shadow-sm text-center">Application Denied</span>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <span class="text-xs text-gray-500 uppercase block mb-1 font-semibold">Applicant Name</span>
+                            <span class="font-bold text-gray-800 text-sm" x-text="myApplication?.name"></span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 uppercase block mb-1 font-semibold">Subjects Requested</span>
+                            <span class="text-sm text-gray-700 leading-snug block" x-text="myApplication?.subjects?.join(', ')"></span>
+                        </div>
+                    </div>
+
+                    <div x-show="myApplication?.status === 'Pending'" class="text-center text-sm text-gray-500">
+                        <i class="fa-solid fa-clock text-oxfordRed mb-2 text-3xl opacity-80"></i>
+                        <p>Our administrators are reviewing your credentials.<br>Please check back soon.</p>
+                    </div>
+
+                    <div x-show="myApplication?.status === 'Approved'" class="text-center">
+                        <p class="text-sm text-green-600 font-bold mb-4">Congratulations! You are officially a tutor on Study.io.</p>
+                        <a href="tutor-dashboard.html" class="inline-block bg-oxfordRed text-white px-6 py-3 rounded-md font-bold hover:bg-oxfordDark transition w-full shadow-md">
+                            Go to Your Personal Dashboard
+                        </a>
+                    </div>
+
+                    <div x-show="myApplication?.status === 'Rejected'" class="text-center">
+                        <p class="text-sm text-red-600 font-bold mb-4">We are sorry, but your application was not approved or was removed by an administrator.</p>
+                        <button @click="clearApplication()" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-md font-bold hover:bg-gray-300 transition w-full shadow-sm">
+                            Dismiss Application
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-cloak x-show="loginModalOpen" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" @click="loginModalOpen = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+            
+            <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+                
+                <div class="bg-oxfordRed px-5 py-4 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-right-to-bracket mr-2"></i> Log In</h3>
+                    <button @click="loginModalOpen = false" class="text-white hover:text-gray-200 transition"><i class="fa-solid fa-times"></i></button>
+                </div>
+                
+                <div class="px-5 py-6 sm:px-6">
+                    
+                    <div x-show="loginError" class="mb-4 bg-red-50 border-l-4 border-oxfordRed p-3 text-sm text-oxfordRed font-semibold shadow-sm rounded-r-md" x-text="loginError"></div>
+                    
+                    <form @submit.prevent="submitLogin" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
+                            <input type="email" x-model="loginData.email" required placeholder="name@example.com" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Password</label>
+                            <input type="password" x-model="loginData.password" required placeholder="••••••••" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                        </div>
+                        
+                        <button type="submit" :disabled="isLoggingIn" class="w-full rounded-md px-6 py-3.5 bg-oxfordRed text-base font-bold text-white hover:bg-oxfordDark focus:outline-none disabled:opacity-50 transition shadow-md mt-2" x-text="isLoggingIn ? 'Verifying...' : 'Sign In'"></button>
+                        
+                        <div class="relative flex items-center py-2">
+                            <div class="flex-grow border-t border-gray-300"></div>
+                            <span class="flex-shrink-0 mx-4 text-gray-400 text-xs font-semibold uppercase">Or</span>
+                            <div class="flex-grow border-t border-gray-300"></div>
+                        </div>
+                        
+                        <button type="button" @click="signInWithGoogle" class="w-full flex items-center justify-center gap-2 rounded-md px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm">
+                            <i class="fa-brands fa-google text-red-500"></i> Continue with Google
+                        </button>
+
+                        <div class="text-xs text-gray-600 text-center bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner mt-4">
+                            <strong>Demo Accounts:</strong><br>
+                            Student: <span class="font-mono text-gray-800 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-300 ml-1">student@study.io</span><br>
+                            Admin: <span class="font-mono text-gray-800 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-300 ml-1 mt-1 inline-block">admin@study.io</span><br>
+                            <div class="mt-2 text-gray-500">Password for both: <span class="font-mono text-gray-800 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-300">password123</span></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-cloak x-show="modalOpen" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" @click="modalOpen = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+            
+            <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
+                
+                <div class="bg-oxfordRed px-5 py-4 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid" :class="modalType === 'student' ? 'fa-user-plus' : 'fa-chalkboard-user'"></i>
+                        <span x-text="modalType === 'student' ? 'Student Registration' : 'Tutor Application'"></span>
+                    </h3>
+                    <button @click="modalOpen = false" class="text-white hover:text-gray-200 transition"><i class="fa-solid fa-times text-xl"></i></button>
+                </div>
+                
+                <div class="px-5 py-6 sm:px-8 max-h-[75vh] overflow-y-auto">
+                    
+                    <div x-show="modalType === 'student'" class="mb-6 pb-6 border-b border-gray-200">
+                        <button type="button" @click="signInWithGoogle" class="w-full flex items-center justify-center gap-2 rounded-md px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition shadow-sm">
+                            <i class="fa-brands fa-google text-red-500"></i> Quick Sign Up with Google
+                        </button>
+                        <div class="text-center text-xs text-gray-400 mt-3 uppercase font-bold tracking-wider">Or register manually below</div>
+                    </div>
+
+                    <form @submit.prevent="submitRegistration" class="space-y-5">
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Full Name</label>
+                                <input type="text" x-model="regData.fullName" required placeholder="Juan Dela Cruz" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
+                                <input type="email" x-model="regData.email" required placeholder="juan@example.com" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Password</label>
+                                <input type="password" x-model="regData.password" required placeholder="Create a secure password" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Age</label>
+                                <input type="number" x-model="regData.age" required placeholder="e.g. 17" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Contact Number</label>
+                                <input type="tel" x-model="regData.contactNumber" required placeholder="0917..." class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            </div>
+                        </div>
+
+                        <div x-show="modalType === 'student'">
+                            <label class="block text-sm font-bold text-gray-700 mb-1.5">Subjects you want to learn</label>
+                            <input type="text" x-model="regData.subjects" placeholder="e.g. General Physics, Basic Calculus" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                        </div>
+                        
+                        <div x-show="modalType === 'tutor'" class="space-y-5 bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-inner">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Current Grade & Strand</label>
+                                    <select x-model="regData.strand" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm bg-white text-sm">
+                                        <option value="">Select Strand...</option>
+                                        <option value="Grade 11 - STEM">Grade 11 - STEM</option>
+                                        <option value="Grade 11 - ABM">Grade 11 - ABM</option>
+                                        <option value="Grade 11 - HUMSS">Grade 11 - HUMSS</option>
+                                        <option value="Grade 11 - ICT">Grade 11 - ICT</option>
+                                        <option value="Grade 11 - HE">Grade 11 - HE</option>
+                                        <option value="Grade 12 - STEM">Grade 12 - STEM</option>
+                                        <option value="Grade 12 - ABM">Grade 12 - ABM</option>
+                                        <option value="Grade 12 - HUMSS">Grade 12 - HUMSS</option>
+                                        <option value="Grade 12 - ICT">Grade 12 - ICT</option>
+                                        <option value="Grade 12 - HE">Grade 12 - HE</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1.5">Proposed Hourly Rate (₱)</label>
+                                    <input type="number" x-model="regData.hourlyRate" placeholder="e.g. 150" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Subjects you Specialize In (Comma separated)</label>
+                                <input type="text" x-model="regData.subjects" placeholder="e.g. Accounting, Business Math" class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1.5">Tell us about your teaching style</label>
+                                <textarea rows="3" x-model="regData.bio" placeholder="I love breaking down complex equations into simple steps..." class="w-full border border-gray-300 rounded-md py-3 px-4 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 p-4 rounded-lg text-xs md:text-sm text-blue-800 border border-blue-100 flex gap-3">
+                            <i class="fa-solid fa-circle-info mt-0.5 text-blue-600"></i>
+                            <div>
+                                <p class="font-bold mb-1">Platform Disclaimer</p>
+                                <p>Study.io connects students with tutors. Financial transactions are handled directly between the student and tutor. We do not take a cut.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div class="flex items-center h-5">
+                                <input type="checkbox" required class="focus:ring-oxfordRed h-4 w-4 text-oxfordRed border-gray-300 rounded cursor-pointer mt-0.5">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label class="font-medium text-gray-700 leading-snug block">I have read and agree to the <a href="#" @click.prevent="modalOpen = false; legalOpen = true;" class="text-oxfordRed hover:underline font-bold">Terms of Service</a> and Privacy Policy.</label>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-6 border-t border-gray-200 flex flex-col sm:flex-row-reverse gap-3">
+                            <button type="submit" :disabled="isSubmitting" class="w-full sm:w-auto inline-flex justify-center rounded-md px-8 py-3 bg-oxfordRed text-sm md:text-base font-bold text-white hover:bg-oxfordDark focus:outline-none disabled:opacity-50 transition shadow-md" x-text="isSubmitting ? 'Processing...' : 'Submit Application'"></button>
+                            <button type="button" @click="modalOpen = false" class="w-full sm:w-auto inline-flex justify-center rounded-md border border-gray-300 px-6 py-3 bg-white text-sm md:text-base font-bold text-gray-700 hover:bg-gray-50 focus:outline-none transition shadow-sm">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-cloak x-show="legalOpen" class="fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" @click="legalOpen = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl w-full">
+                
+                <div class="bg-gray-900 px-5 py-4 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-scale-balanced mr-2"></i> Legal & Terms of Service</h3>
+                    <button @click="legalOpen = false" class="text-gray-400 hover:text-white transition"><i class="fa-solid fa-times text-xl"></i></button>
+                </div>
+                
+                <div class="px-6 py-6 sm:px-8 max-h-[60vh] overflow-y-auto text-gray-600 space-y-5 text-sm leading-relaxed">
+                    <p class="italic"><strong>Last Updated:</strong> February 2026</p>
+                    
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-base mb-1">1. Acceptance of Terms</h4>
+                        <p>By registering for an account as a student or applying as a tutor on Study.io, you agree to comply with and be bound by these Terms of Service. If you do not agree to these terms, please do not use the platform.</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-base mb-1">2. Platform Role & Financial Transactions</h4>
+                        <p>Study.io operates strictly as a peer-to-peer matchmaking platform. We facilitate the discovery and connection between students and tutors. Study.io <strong>does not</strong> process, handle, mediate, or intervene in any financial payments or transactions.</p>
+                        <p class="mt-2">The collection of payment, pricing negotiations, and refund policies must be agreed upon and settled securely between the student and the tutor outside of the platform.</p>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                    <button type="button" @click="legalOpen = false" class="bg-oxfordRed text-white px-6 py-2.5 rounded-md font-bold hover:bg-oxfordDark transition shadow-sm">Accept & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="fixed inset-0 bg-gray-900/80 z-50 flex items-center justify-center p-4 modal-hidden backdrop-blur-sm">
+        <div id="profile-modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]">
+            
+            <div id="modal-header-bg" class="h-24 md:h-32 relative transition-all duration-300 bg-oxfordRed flex-shrink-0">
+                <button onclick="closeProfile()" class="absolute top-4 right-4 text-white hover:text-red-200 bg-black/40 rounded-full w-8 h-8 flex items-center justify-center transition backdrop-blur-sm">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="px-6 pb-6 md:px-8 md:pb-8 relative flex-1 overflow-y-auto">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end -mt-10 md:-mt-12 mb-4 gap-4">
+                    <img id="modal-avatar" src="" class="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-md bg-white object-cover self-start">
+                    
+                    <div class="flex items-center space-x-4 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-end border-t border-gray-100 sm:border-0 pt-4 sm:pt-0 mt-2 sm:mt-0">
+                        <div class="text-left sm:text-right">
+                            <span class="text-[10px] md:text-xs text-gray-500 uppercase font-bold tracking-wider">Hourly Rate</span><br>
+                            <span id="modal-rate" class="font-bold text-oxfordRed text-xl md:text-2xl"></span>
+                        </div>
+                        <button onclick="triggerChat()" class="bg-oxfordRed text-white px-6 py-2.5 rounded-md font-bold hover:bg-oxfordDark transition shadow-md flex items-center gap-2 text-sm md:text-base">
+                            <i class="fa-solid fa-paper-plane"></i> Message
+                        </button>
+                    </div>
+                </div>
+                
+                <h2 id="modal-name" class="text-2xl md:text-3xl font-bold text-gray-800 leading-tight">...</h2>
+                
+                <div class="flex flex-wrap items-center text-gray-500 text-xs md:text-sm mt-2 mb-6 md:mb-8 gap-2 md:gap-4">
+                    <span id="modal-strand" class="font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                        <i class="fa-solid fa-id-card text-oxfordRed mr-1"></i> ...
+                    </span>
+                    <span class="bg-green-100 text-green-800 px-2.5 py-1 rounded-full font-bold border border-green-200">
+                        <i class="fa-solid fa-check-circle mr-1"></i> Verified
+                    </span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="font-bold text-gray-800 border-b border-gray-200 pb-2 mb-3 text-sm md:text-base">About Me</h3>
+                        <p id="modal-bio" class="text-gray-600 text-sm mb-8 whitespace-pre-wrap leading-relaxed"></p>
+                        
+                        <h3 class="font-bold text-gray-800 border-b border-gray-200 pb-2 mb-3 text-sm md:text-base">Expertise</h3>
+                        <div id="modal-subjects" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    
+                    <div>
+                        <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
+                            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm md:text-base">
+                                <i class="fa-regular fa-calendar-check text-oxfordRed"></i> Availability
+                            </h3>
+                            <ul id="modal-schedule" class="space-y-3"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // *** TAB ISOLATION FIX ***
+        const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('studyio_tab_id', tabId);
+
+        const supabaseClient = window.supabase.createClient(
+            'https://vdtokaamdrvyzchtepjy.supabase.co', 
+            'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
+            { 
+                auth: { 
+                    storage: window.sessionStorage,
+                    storageKey: 'studyio_auth_' + tabId 
+                } 
+            }
+        );
+
+        function appData() {
+            return {
+                // UI States
+                mobileMenuOpen: false,     
+                mobileFiltersOpen: false,  
+
+                // Auth States
+                currentUser: null, 
+                
+                // *** REACTIVE IDENTITY VARIABLES ***
+                navName: '',
+                navAvatar: '',
+
+                loginModalOpen: false, 
+                isLoggingIn: false, 
+                loginError: '', 
+                loginData: { email: '', password: '' },
+
+                // Registration States
+                modalOpen: false, 
+                modalType: 'student', 
+                legalOpen: false, 
+                statusModalOpen: false, 
+                myApplication: null, 
+                regData: { 
+                    fullName: '', email: '', password: '', age: '', contactNumber: '', 
+                    subjects: '', bio: '', role: '', strand: '', hourlyRate: '' 
+                },
+                isSubmitting: false, 
+                
+                mqttClient: null, 
+                newTutorAlert: false, 
+                
+                init() {
+                    // *** CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
+                    if (window.location.search.includes('logged_out=1')) {
+                        sessionStorage.clear(); 
+                        localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
+                        
+                        // SWEEPER FOR STICKY LOGIN BUG!
+                        localStorage.removeItem('studyio_student_profile');
+                        localStorage.removeItem('studyio_tutor_profile');
+                        
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        this.currentUser = null;
+                        supabaseClient.auth.signOut().catch(()=>{}); 
+                    }
+
+                    // *** LISTEN TO SUPABASE FOR SECURE OAUTH REDIRECTS ***
+                    supabaseClient.auth.onAuthStateChange((event, session) => {
+                        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                            if (session && session.user.app_metadata.provider === 'google') {
+                                const user = session.user;
+                                const fullName = user.user_metadata.full_name || user.email.split('@')[0];
+                                const avatar = user.user_metadata.avatar_url || '';
+                                
+                                // INJECT THE GOOGLE AVATAR INTO THE SESSION MEMORY
+                                this.currentUser = { 
+                                    name: fullName, 
+                                    email: user.email, 
+                                    role: 'student',
+                                    avatar: avatar 
+                                };
+                                
+                                sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                                
+                                // FORCE UPDATE LOCAL STORAGE SO THE DASHBOARD CAN SEE IT
+                                let existingProfile = localStorage.getItem('studyio_student_profile');
+                                if (!existingProfile) {
+                                    const blankStudentProfile = {
+                                        name: fullName, 
+                                        strand: "Grade 11", 
+                                        bio: "Ready to learn!", 
+                                        headerColor: "bg-gray-800", 
+                                        avatarUrl: avatar, 
+                                        coverImageUrl: "", 
+                                        subjects: []
+                                    };
+                                    localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                                } else {
+                                    let parsed = JSON.parse(existingProfile);
+                                    if(!parsed.avatarUrl && avatar) {
+                                        parsed.avatarUrl = avatar;
+                                        localStorage.setItem('studyio_student_profile', JSON.stringify(parsed));
+                                    }
+                                }
+                                this.updateIdentity();
+                            }
+                        } else if (event === 'SIGNED_OUT') {
+                            this.currentUser = null;
+                            sessionStorage.clear();
+                            this.updateIdentity();
+                        }
+                    });
+
+                    // *** LOAD MOCK MEMORY FOR MANUAL LOGINS ***
+                    setTimeout(() => {
+                        if (!this.currentUser) {
+                            const savedSession = sessionStorage.getItem('studyio_current_user');
+                            if (savedSession) { 
+                                this.currentUser = JSON.parse(savedSession); 
+                                this.updateIdentity();
+                            }
+                        }
+                    }, 200);
+
+                    // *** TRIGGER LOGIN MODAL FROM VANILLA JS ***
+                    window.addEventListener('require-login', () => {
+                        alert("Please log in to message a tutor!");
+                        this.loginModalOpen = true;
+                    });
+
+                    // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
+                    window.addEventListener('storage', () => this.updateIdentity());
+                    window.addEventListener('visibilitychange', () => {
+                        if (!document.hidden) {
+                            this.updateIdentity();
+                        }
+                    });
+
+                    // Check saved application tracker
+                    const savedApp = sessionStorage.getItem('studyio_my_application');
+                    if (savedApp) { 
+                        this.myApplication = JSON.parse(savedApp); 
+                    }
+
+                    // *** BACK-BUTTON CACHE FIX ***
+                    window.addEventListener('pageshow', (event) => {
+                        if (event.persisted && !sessionStorage.getItem('studyio_current_user')) { 
+                            window.location.reload(); 
+                        }
+                    });
+
+                    // Real-Time MQTT Connection (Only for Profile Updates and Applications now)
+                    this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
+                    
+                    this.mqttClient.on('connect', () => {
+                        this.mqttClient.subscribe('studyio/system/profile_updates');
+                        this.mqttClient.subscribe('studyio/system/new_tutor_approved'); 
+                        this.mqttClient.subscribe('studyio/system/delete_tutor'); 
+                        this.mqttClient.subscribe('studyio/system/application_rejected');
+                    });
+
+                    this.mqttClient.on('message', (topic, message) => {
+                        const parsedMsg = JSON.parse(message.toString());
+                        
+                        // Handle Profile Updates
+                        if (parsedMsg.type === 'profile_update') {
+                            const updatedProfile = parsedMsg.profile;
+                            const tutorIndex = tutorsData.findIndex(t => t.id === updatedProfile.id);
+                            
+                            if (tutorIndex !== -1) {
+                                tutorsData[tutorIndex].name = updatedProfile.name; 
+                                tutorsData[tutorIndex].bio = updatedProfile.bio;
+                                tutorsData[tutorIndex].hourlyRate = updatedProfile.hourlyRate; 
+                                tutorsData[tutorIndex].strand = updatedProfile.strand;
+                                tutorsData[tutorIndex].headerColor = updatedProfile.headerColor; 
+                                tutorsData[tutorIndex].avatarUrl = updatedProfile.avatarUrl; 
+                                tutorsData[tutorIndex].coverImageUrl = updatedProfile.coverImageUrl; 
+                                
+                                tutorsData[tutorIndex].subjects = updatedProfile.subjects ? [...updatedProfile.subjects] : [];
+                                tutorsData[tutorIndex].schedule = updatedProfile.schedule ? [...updatedProfile.schedule] : [];
+                                
+                                syncDirectoryToStorage(); 
+                                handleFilters(); 
+                                
+                                if(selectedTutorId === updatedProfile.id) { 
+                                    openProfile(updatedProfile.id); 
+                                }
+                            }
+                        }
+
+                        // Handle New Tutors
+                        if (parsedMsg.type === 'new_tutor_approved') {
+                            const newTutor = parsedMsg.tutor;
+                            if(!tutorsData.find(t => t.id === newTutor.id)) {
+                                tutorsData.unshift(newTutor); 
+                                syncDirectoryToStorage(); 
+                                handleFilters(); 
+                                this.newTutorAlert = true;
+                                setTimeout(() => { this.newTutorAlert = false; }, 4000);
+                            }
+
+                            if (this.myApplication && this.myApplication.id === newTutor.id) {
+                                this.myApplication.status = 'Approved';
+                                sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                                
+                                const loggedInUser = { name: this.myApplication.name, email: this.myApplication.email, role: 'tutor' };
+                                sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
+                                this.currentUser = loggedInUser;
+                                
+                                // Build Profile
+                                const personalizedProfile = {
+                                    id: this.myApplication.id, 
+                                    name: this.myApplication.name, 
+                                    strand: this.myApplication.strand,
+                                    bio: this.myApplication.bio, 
+                                    hourlyRate: this.myApplication.hourlyRate,
+                                    headerColor: "bg-gray-800", 
+                                    avatarUrl: "", 
+                                    coverImageUrl: "",
+                                    subjects: this.myApplication.subjects || [],
+                                    schedule: [] 
+                                };
+                                localStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
+                                this.updateIdentity();
+                            }
+                        }
+
+                        // Handle Rejections
+                        if (parsedMsg.type === 'application_rejected') {
+                            if (this.myApplication && this.myApplication.id === parsedMsg.id) {
+                                this.myApplication.status = 'Rejected';
+                                sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                            }
+                        }
+
+                        // Handle Deletions
+                        if (parsedMsg.type === 'delete_tutor') {
+                            const idToRemove = parsedMsg.id;
+                            const tutorIndex = tutorsData.findIndex(t => t.id === idToRemove);
+                            
+                            if (tutorIndex !== -1) {
+                                tutorsData.splice(tutorIndex, 1);
+                                syncDirectoryToStorage(); 
+                                handleFilters();
+                                if(selectedTutorId === idToRemove) { 
+                                    closeProfile(); 
+                                }
+                            }
+
+                            if (this.myApplication && this.myApplication.id === idToRemove) {
+                                this.myApplication.status = 'Rejected';
+                                sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                                
+                                if (this.currentUser && this.currentUser.email === this.myApplication.email) {
+                                    this.logout();
+                                }
+                            }
+                        }
+                    });
+                },
+
+                // *** DYNAMIC IDENTITY RADAR ***
+                updateIdentity() {
+                    if (!this.currentUser) {
+                        this.navName = '';
+                        this.navAvatar = '';
+                        return;
+                    }
+
+                    let currentName = this.currentUser.name;
+                    let currentAvatar = this.currentUser.avatar || '';
+
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.name) currentName = p.name;
+                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.name) currentName = p.name;
+                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    }
+
+                    this.navName = currentName;
+                    this.navAvatar = currentAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentName)}&background=b91c1c&color=fff&bold=true`;
+                },
+
+                // HELPER: Fetch Avatar safely with Google fallback
+                getNavbarAvatar() {
+                    if (!this.currentUser) return '';
+                    
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.avatarUrl) return p.avatarUrl;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.avatarUrl) return p.avatarUrl;
+                    }
+                    
+                    if (this.currentUser.avatar) return this.currentUser.avatar;
+                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getNavbarName())}&background=b91c1c&color=fff&bold=true`;
+                },
+
+                // *** DYNAMIC NAME SYNC ***
+                getNavbarName() {
+                    if (!this.currentUser) return '';
+                    
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.name) return p.name;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.name) return p.name;
+                    }
+                    
+                    return this.currentUser.name;
+                },
+
+                // *** GOOGLE LOGIC WITH PROMPT FIX ***
+                async signInWithGoogle() {
+                    try {
+                        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                            provider: 'google',
+                            options: {
+                                redirectTo: window.location.origin + window.location.pathname,
+                                queryParams: {
+                                    prompt: 'select_account' 
+                                }
+                            }
+                        });
+                        if (error) throw error;
+                    } catch (err) {
+                        alert("Error connecting to Google: " + err.message);
+                    }
+                },
+
+                submitLogin() {
+                    this.isLoggingIn = true;
+                    this.loginError = '';
+                    
+                    setTimeout(() => {
+                        const registeredCreds = JSON.parse(localStorage.getItem('studyio_mock_credentials'));
+                        const inputEmail = this.loginData.email.trim().toLowerCase();
+                        const inputPass = this.loginData.password.trim();
+                        
+                        if (inputEmail === 'student@study.io' && inputPass === 'password123') {
+                            this.currentUser = { name: 'Demo Student', email: 'student@study.io', role: 'student' };
+                            this.loginModalOpen = false; 
+                            this.loginData = { email: '', password: '' }; 
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
+                        } 
+                        else if (inputEmail === 'admin@study.io' && inputPass === 'password123') {
+                            this.currentUser = { name: 'Super Admin', email: 'admin@study.io', role: 'admin' };
+                            this.loginModalOpen = false; 
+                            this.loginData = { email: '', password: '' }; 
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
+                        }
+                        else if (registeredCreds && inputEmail === registeredCreds.email.trim().toLowerCase() && inputPass === registeredCreds.password.trim()) {
+                            this.currentUser = { name: registeredCreds.name, email: registeredCreds.email, role: registeredCreds.role };
+                            this.loginModalOpen = false; 
+                            this.loginData = { email: '', password: '' };
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
+                        } 
+                        else { 
+                            this.loginError = 'Invalid email or password. Please try again.'; 
+                        }
+                        
+                        this.isLoggingIn = false;
+                    }, 800);
+                },
+
+                // SWEEPER FOR STICKY LOGIN BUG ADDED HERE
+                async logout() { 
+                    this.currentUser = null; 
+                    sessionStorage.clear(); 
+                    
+                    localStorage.removeItem('studyio_student_profile');
+                    localStorage.removeItem('studyio_tutor_profile');
+                    
+                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
+                    try { await supabaseClient.auth.signOut(); } catch(e) {}
+                    window.location.reload(); 
+                },
+
+                async submitRegistration() {
+                    this.isSubmitting = true;
+                    try {
+                        const { data, error } = await supabaseClient.auth.signUp({ 
+                            email: this.regData.email.trim(), 
+                            password: this.regData.password.trim(), 
+                            options: { 
+                                data: { 
+                                    full_name: this.regData.fullName.trim(), 
+                                    role: this.modalType, 
+                                    age: this.regData.age, 
+                                    contact_number: this.regData.contactNumber, 
+                                    subjects: this.regData.subjects, 
+                                    bio: this.regData.bio 
+                                } 
+                            } 
+                        });
+                        
+                        if (error) throw error; 
+                        
+                        localStorage.setItem('studyio_mock_credentials', JSON.stringify({ 
+                            email: this.regData.email.trim(), 
+                            password: this.regData.password.trim(), 
+                            name: this.regData.fullName.trim(), 
+                            role: this.modalType 
+                        }));
+                        
+                        if(this.modalType === 'tutor') {
+                            const newApplicant = {
+                                id: Date.now(), 
+                                name: this.regData.fullName.trim(), 
+                                email: this.regData.email.trim(), 
+                                age: this.regData.age,
+                                contact: this.regData.contactNumber, 
+                                strand: this.regData.strand || "Unspecified Strand", 
+                                hourlyRate: this.regData.hourlyRate || 100, 
+                                subjects: this.regData.subjects ? this.regData.subjects.split(',').map(s=>s.trim()) : [],
+                                bio: this.regData.bio || "No bio provided."
+                            };
+                            
+                            this.mqttClient.publish('studyio/system/new_application', JSON.stringify(newApplicant));
+                            
+                            let existingApps = localStorage.getItem('studyio_admin_apps');
+                            if (existingApps) {
+                                existingApps = JSON.parse(existingApps);
+                            } else {
+                                existingApps = [
+                                    { 
+                                        id: 101, 
+                                        name: "Miguel Cruz", 
+                                        email: "miguel.cruz@gmail.com", 
+                                        strand: "Grade 12 - STEM", 
+                                        age: 18, 
+                                        contact: "+63 917 123 4567", 
+                                        hourlyRate: 150, 
+                                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                                        bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
+                                    },
+                                    { 
+                                        id: 102, 
+                                        name: "Isabella Reyes", 
+                                        email: "isa.reyes22@yahoo.com", 
+                                        strand: "Grade 12 - HUMSS", 
+                                        age: 17, 
+                                        contact: "+63 918 987 6543", 
+                                        hourlyRate: 120, 
+                                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                                        bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
+                                    }
+                                ];
+                            }
+                            existingApps.unshift(newApplicant);
+                            localStorage.setItem('studyio_admin_apps', JSON.stringify(existingApps));
+
+                            this.myApplication = { ...newApplicant, status: 'Pending' }; 
+                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+
+                            alert(`Application Sent! You can track your status using the new button in the navigation bar. You can also Log In now!`);
+                        } else { 
+                            const blankStudentProfile = {
+                                name: this.regData.fullName.trim(),
+                                strand: "Grade 11",
+                                bio: "Ready to learn!",
+                                headerColor: "bg-gray-800",
+                                avatarUrl: "", 
+                                coverImageUrl: "",
+                                subjects: this.regData.subjects ? this.regData.subjects.split(',').map(s=>s.trim()) : []
+                            };
+                            localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                            
+                            alert(`Success! Welcome ${this.regData.fullName}. You can now Log In!`); 
+                        }
+                        
+                        this.modalOpen = false; 
+                        this.regData = { fullName: '', email: '', password: '', age: '', contactNumber: '', subjects: '', bio: '', role: '', strand: '', hourlyRate: '' };
+                        
+                    } catch (err) { 
+                        alert("Error: " + err.message); 
+                    } finally { 
+                        this.isSubmitting = false; 
+                    }
+                },
+
+                setupAndGoToDashboard() {
+                    // Logic left intentionally blank as UI handles navigation securely
+                },
+
+                clearApplication() { 
+                    this.myApplication = null; 
+                    sessionStorage.removeItem('studyio_my_application'); 
+                    this.statusModalOpen = false; 
+                },
+
+                openModal(type) { 
+                    this.modalType = type; 
+                    this.modalOpen = true; 
+                },
+
+                scrollTo(id) { 
+                    document.getElementById(id).scrollIntoView({ behavior: 'smooth' }); 
+                    this.mobileMenuOpen = false; 
+                }
+            }
+        }
+
+        // ==========================================
+        //         VANILLA JS DIRECTORY LOGIC
+        // ==========================================
+
+        let tutorsData = [
+            { 
+                id: 1, 
+                name: "Janella Manansala", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["General Physics 2", "Personal Development"], 
+                bio: "I specialize in General Physics and Calculus. I help students simplify complex formulas!", 
+                schedule: [
+                    { day: "Monday", time: "4:00 PM - 6:00 PM" }, 
+                    { day: "Saturday", time: "10:00 AM - 2:00 PM" }
+                ], 
+                hourlyRate: 200, 
+                headerColor: "bg-oxfordRed" 
+            },
+            { 
+                id: 2, 
+                name: "Xian Liwanag", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Understanding Culture, Society, and Politics", "Statistics and Probability"], 
+                bio: "Passionate about social sciences and numbers alike.", 
+                schedule: [
+                    { day: "Tuesday", time: "5:00 PM - 7:00 PM" }
+                ], 
+                hourlyRate: 150, 
+                headerColor: "bg-gray-800" 
+            },
+            { 
+                id: 3, 
+                name: "Anjela Magcalas", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Physical Education and Health", "General Biology 1", "General Biology 2"], 
+                bio: "Future doctor here! Let me help you with biology concepts.", 
+                schedule: [
+                    { day: "Monday", time: "6:00 PM - 8:00 PM" }
+                ], 
+                hourlyRate: 250, 
+                headerColor: "bg-blue-800" 
+            },
+            { 
+                id: 4, 
+                name: "Jasmaine Magcalas", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["21st Century Literature", "Entrepreneurship", "Business Math"], 
+                bio: "Business-minded and a bookworm.", 
+                schedule: [
+                    { day: "Wednesday", time: "3:00 PM - 5:00 PM" }
+                ], 
+                hourlyRate: 180, 
+                headerColor: "bg-emerald-800" 
+            },
+            { 
+                id: 5, 
+                name: "Cedric Santos", 
+                strand: "Grade 12 - ABM", 
+                subjects: ["Fundamentals of Accountancy, Business, & Math 1", "Fundamentals of Accountancy, Business, & Math 2", "Business Math"], 
+                bio: "Numbers tell a story. Let's make sure yours makes sense.", 
+                schedule: [
+                    { day: "Tuesday", time: "4:00 PM - 6:00 PM" }
+                ], 
+                hourlyRate: 180, 
+                headerColor: "bg-yellow-600", 
+                avatarUrl: "", 
+                coverImageUrl: "" 
+            },
+            { 
+                id: 6, 
+                name: "Johann Hernandez", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Introduction to the Philosophy of the Human Person", "General Biology 1", "General Biology 2"], 
+                bio: "Let's explore Philosophy and Biology together.", 
+                schedule: [
+                    { day: "Monday", time: "5:00 PM - 7:00 PM" }
+                ], 
+                hourlyRate: 200, 
+                headerColor: "bg-teal-700" 
+            },
+            { 
+                id: 7, 
+                name: "Kyle Ikan", 
+                strand: "Grade 11 - STEM", 
+                subjects: ["Statistics and Probability", "Basic Calculus"], 
+                bio: "Math doesn't have to be intimidating!", 
+                schedule: [
+                    { day: "Friday", time: "3:00 PM - 6:00 PM" }
+                ], 
+                hourlyRate: 150, 
+                headerColor: "bg-indigo-700" 
+            },
+            { 
+                id: 8, 
+                name: "Akon Mariano", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Computer System Servicing 12"], 
+                bio: "Ready to help you master Computer System Servicing 12 with practical tips and tricks!", 
+                schedule: [
+                    { day: "Wednesday", time: "4:00 PM - 6:00 PM" }, 
+                    { day: "Saturday", time: "1:00 PM - 3:00 PM" }
+                ], 
+                hourlyRate: 150, 
+                headerColor: "bg-blue-600" 
+            },
+            { 
+                id: 9, 
+                name: "Ace Magno", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Computer System Servicing 11"], 
+                bio: "I'll guide you through the basics of Computer System Servicing 11 so you can build a strong foundation.", 
+                schedule: [
+                    { day: "Tuesday", time: "5:00 PM - 7:00 PM" }, 
+                    { day: "Thursday", time: "5:00 PM - 7:00 PM" }
+                ], 
+                hourlyRate: 100, 
+                headerColor: "bg-green-600" 
+            }
+        ];
+
+        // *** MASTER SYNC VAULT FIX ***
+        function reconstructDatabase() {
+            let hasChanges = false;
+            const savedDirectory = localStorage.getItem('studyio_public_directory');
+            
+            if (savedDirectory) { 
+                tutorsData = JSON.parse(savedDirectory); 
+            }
+
+            const adminTutors = localStorage.getItem('studyio_admin_tutors');
+            if (adminTutors) {
+                const parsedAdmin = JSON.parse(adminTutors);
+                const originalLength = tutorsData.length;
+                
+                tutorsData = tutorsData.filter(t => parsedAdmin.some(at => at.id === t.id));
+                
+                if (tutorsData.length !== originalLength) {
+                    hasChanges = true; 
+                }
+
+                parsedAdmin.forEach(at => {
+                    if (!tutorsData.some(t => t.id === at.id)) {
+                        tutorsData.unshift({ 
+                            id: at.id, 
+                            name: at.name, 
+                            strand: at.strand, 
+                            hourlyRate: at.hourlyRate, 
+                            bio: "New tutor on the platform.", 
+                            subjects: [], 
+                            schedule: [], 
+                            headerColor: "bg-gray-800" 
+                        });
+                        hasChanges = true;
+                    }
+                });
+            }
+
+            const savedProfile = localStorage.getItem('studyio_tutor_profile');
+            if (savedProfile) {
+                const p = JSON.parse(savedProfile);
+                const index = tutorsData.findIndex(t => t.id === p.id);
+                if (index !== -1) {
+                    if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
+                        tutorsData[index] = { ...tutorsData[index], ...p }; 
+                        hasChanges = true; 
+                    }
+                } else { 
+                    tutorsData.unshift(p); 
+                    hasChanges = true; 
+                }
+            }
+
+            if (hasChanges) { 
+                localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData)); 
+            }
+        }
+
+        reconstructDatabase();
+        
+        function syncDirectoryToStorage() { 
+            localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData)); 
+        }
+
+        const curriculumData = {
+            "Grade 11": { 
+                "Core": [
+                    "Physical Education and Health", 
+                    "General Mathematics", 
+                    "21st Century Literature", 
+                    "Empowerment Technologies", 
+                    "Entrepreneurship", 
+                    "Earth Science", 
+                    "Earth and Life Science", 
+                    "Reading and Writing Skills", 
+                    "Practical Research 1", 
+                    "Komunikasyon at Pananaliksik", 
+                    "Statistics and Probability", 
+                    "Introduction to the Philosophy of the Human Person"
+                ], 
+                "STEM": [
+                    "General Biology 1", 
+                    "Pre-Calculus", 
+                    "General Chemistry 1", 
+                    "General Biology 2", 
+                    "Basic Calculus"
+                ], 
+                "ABM": [
+                    "Organization and Management", 
+                    "Business Math", 
+                    "Applied Economics", 
+                    "Principles of Marketing", 
+                    "Fundamentals of Accountancy, Business, & Math 1"
+                ], 
+                "HUMSS": [
+                    "Introduction to World Religion and Belief System", 
+                    "Discipline and Ideas in Social Sciences", 
+                    "Philippine Politics and Governance", 
+                    "Creative Writing", 
+                    "Discipline and Ideas in the Applied Social Sciences"
+                ], 
+                "ICT": [
+                    "Computer System Servicing 11", 
+                    "Computer System Servicing (Practical) 11"
+                ], 
+                "HE": [
+                    "Cookery 11", 
+                    "Bread and Pastry Production"
+                ] 
+            },
+            "Grade 12": { 
+                "Core": [
+                    "Personal Development", 
+                    "Oral Communication in Context", 
+                    "Understanding Culture, Society, and Politics", 
+                    "Pagsulat sa Filipino (Akademik)", 
+                    "Pagsulat sa Filipino (TekBok)", 
+                    "Practical Research 2", 
+                    "Contemporary Philippine Arts from the Regions", 
+                    "Physical Education", 
+                    "English for Academics and Professional Purposes", 
+                    "Inquiries, Investigation, and Immersion", 
+                    "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", 
+                    "Media Information and Literacy"
+                ], 
+                "STEM": [
+                    "General Physics 1", 
+                    "General Chemistry 2", 
+                    "Disaster Readiness and Risk Reduction", 
+                    "General Physics 2", 
+                    "Capstone"
+                ], 
+                "ABM": [
+                    "Fundamentals of Accountancy, Business, & Math 2", 
+                    "Physical Science", 
+                    "Business Finance", 
+                    "Business Ethics and Social Responsibility", 
+                    "Business Enterprise and Simulation"
+                ], 
+                "HUMSS": [
+                    "Creative Non-Fiction", 
+                    "Physical Science", 
+                    "Community, Engagement, Solidarity and Citizenship", 
+                    "Trends, Networks, and Critical Thinking", 
+                    "Culminating Activity"
+                ], 
+                "ICT": [
+                    "Computer Servicing System 12", 
+                    "Physical Science", 
+                    "Computer System Servicing 12", 
+                    "Computer System Servicing (Practical) 12"
+                ], 
+                "HE": [
+                    "Cookery 12", 
+                    "Physical Science", 
+                    "Food and Beverage Services"
+                ] 
+            }
+        };
+
+        let selectedTutorName = ""; 
+        let selectedTutorId = null;
+
+        function populateSubjectDropdown() {
+            const gradeFilter = document.getElementById('grade-filter').value; 
+            const strandFilter = document.getElementById('strand-filter').value;
+            const subjectSelect = document.getElementById('subject-filter'); 
+            const currentSelectedSubject = subjectSelect.value;
+            
+            subjectSelect.innerHTML = '<option value="">-- All Subjects --</option>';
+
+            const gradesToProcess = gradeFilter ? [gradeFilter] : ["Grade 11", "Grade 12"];
+            const strandsToProcess = strandFilter ? [strandFilter] : ["STEM", "ABM", "HUMSS", "ICT", "HE"];
+
+            gradesToProcess.forEach(grade => {
+                const coreGroup = document.createElement('optgroup'); 
+                coreGroup.label = `${grade} - Core`;
+                
+                curriculumData[grade]["Core"].forEach(subject => { 
+                    coreGroup.innerHTML += `<option value="${subject}">${subject}</option>`; 
+                }); 
+                
+                subjectSelect.appendChild(coreGroup);
+                
+                strandsToProcess.forEach(strand => {
+                    if (curriculumData[grade][strand] && curriculumData[grade][strand].length > 0) {
+                        const specGroup = document.createElement('optgroup'); 
+                        specGroup.label = `${grade} - ${strand}`;
+                        
+                        curriculumData[grade][strand].forEach(subject => { 
+                            specGroup.innerHTML += `<option value="${subject}">${subject}</option>`; 
+                        }); 
+                        
+                        subjectSelect.appendChild(specGroup);
+                    }
+                });
+            });
+            
+            if (Array.from(subjectSelect.options).some(opt => opt.value === currentSelectedSubject)) { 
+                subjectSelect.value = currentSelectedSubject; 
+            } else { 
+                subjectSelect.value = ""; 
+            }
+        }
+
+        function handleFilters() {
+            const searchTerm = document.getElementById('global-search-desktop').value.toLowerCase() || document.getElementById('global-search-mobile').value.toLowerCase(); 
+            const subjectTerm = document.getElementById('subject-filter').value.toLowerCase();
+            const strandTerm = document.getElementById('strand-filter').value; 
+            const gradeTerm = document.getElementById('grade-filter').value;
+
+            const filtered = tutorsData.filter(t => {
+                const matchesSearch = t.name.toLowerCase().includes(searchTerm) || t.subjects.some(sub => sub.toLowerCase().includes(searchTerm));
+                const matchesSubject = subjectTerm === "" || t.subjects.some(sub => sub.toLowerCase().includes(subjectTerm) || subjectTerm.includes(sub.toLowerCase()));
+                
+                let matchesGrade = true;
+                if (gradeTerm !== "") {
+                    const allGradeSubjects = [
+                        ...curriculumData[gradeTerm]["Core"], 
+                        ...curriculumData[gradeTerm]["STEM"], 
+                        ...curriculumData[gradeTerm]["ABM"], 
+                        ...curriculumData[gradeTerm]["HUMSS"], 
+                        ...curriculumData[gradeTerm]["ICT"], 
+                        ...curriculumData[gradeTerm]["HE"]
+                    ].map(s => s.toLowerCase());
+                    
+                    matchesGrade = t.subjects.some(sub => allGradeSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
+                }
+                
+                let matchesStrand = true;
+                if (strandTerm !== "") {
+                    const allStrandSubjects = [
+                        ...curriculumData["Grade 11"]["Core"], 
+                        ...curriculumData["Grade 12"]["Core"], 
+                        ...curriculumData["Grade 11"][strandTerm], 
+                        ...curriculumData["Grade 12"][strandTerm]
+                    ].map(s => s.toLowerCase());
+                    
+                    matchesStrand = t.subjects.some(sub => allStrandSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
+                }
+                
+                return matchesSearch && matchesSubject && matchesGrade && matchesStrand;
+            });
+            
+            renderTutors(filtered);
+        }
+
+        function renderTutors(tutors) {
+            const grid = document.getElementById('tutor-grid'); 
+            const emptyState = document.getElementById('empty-state');
+            
+            grid.innerHTML = ''; 
+            
+            if (tutors.length === 0) { 
+                grid.style.display = 'none'; 
+                emptyState.style.display = 'block'; 
+                return; 
+            }
+            
+            grid.style.display = 'grid'; 
+            emptyState.style.display = 'none';
+
+            tutors.forEach(tutor => {
+                const subjectTags = tutor.subjects.map(sub => `<span class="text-[10px] sm:text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">${sub}</span>`).join('');
+                const finalAvatar = tutor.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=random&color=fff&bold=true`;
+                const headerStyle = tutor.coverImageUrl ? `background-image: url('${tutor.coverImageUrl}'); background-size: cover; background-position: center;` : '';
+                const headerClass = tutor.coverImageUrl ? '' : tutor.headerColor;
+
+                grid.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition overflow-hidden border border-gray-100 flex flex-col group cursor-pointer sm:cursor-auto" onclick="if(window.innerWidth < 640) openProfile(${tutor.id})">
+                        <div class="h-20 sm:h-24 ${headerClass} relative transition-all duration-300" style="${headerStyle}">
+                            <div class="absolute -bottom-6 sm:-bottom-8 left-4 sm:left-6">
+                                <img src="${finalAvatar}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-white shadow-sm object-cover bg-white">
+                            </div>
+                        </div>
+                        <div class="pt-8 sm:pt-10 px-5 sm:px-6 pb-5 sm:pb-6 flex-1 flex flex-col pointer-events-none sm:pointer-events-auto">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="min-w-0">
+                                    <h3 class="text-lg sm:text-xl font-bold text-gray-800 truncate">${tutor.name}</h3>
+                                    <p class="text-xs sm:text-sm text-gray-500 truncate">${tutor.strand}</p>
+                                </div>
+                                <span class="bg-green-100 text-green-800 text-[10px] sm:text-xs px-2 py-0.5 sm:py-1 rounded-full font-bold shadow-sm border border-green-200 flex-shrink-0">Verified</span>
+                            </div>
+                            <div class="mt-3 sm:mt-4 space-y-2 flex-1">
+                                <p class="text-xs sm:text-sm text-gray-600 line-clamp-2 italic">"${tutor.bio}"</p>
+                                <div class="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">${subjectTags}</div>
+                            </div>
+                            <div class="mt-4 sm:mt-6 pt-4 border-t border-gray-100 flex justify-between items-center pointer-events-auto">
+                                <span class="font-bold text-oxfordRed text-base sm:text-lg">₱${tutor.hourlyRate}<span class="text-xs sm:text-sm text-gray-500 font-normal">/hr</span></span>
+                                <button onclick="openProfile(${tutor.id}); event.stopPropagation();" class="hidden sm:block bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-semibold hover:bg-gray-50 hover:text-oxfordRed hover:border-oxfordRed transition shadow-sm">
+                                    View Profile
+                                </button>
+                                <span class="sm:hidden text-xs text-oxfordRed font-bold flex items-center gap-1">View <i class="fa-solid fa-arrow-right"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openProfile(tutorId) {
+            const tutor = tutorsData.find(t => t.id === tutorId); 
+            if (!tutor) return;
+            
+            selectedTutorName = tutor.name; 
+            selectedTutorId = tutor.id;
+            
+            const finalAvatar = tutor.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=random&color=fff&bold=true`;
+            const headerBg = document.getElementById('modal-header-bg');
+            
+            if(tutor.coverImageUrl) { 
+                headerBg.className = 'h-24 md:h-32 relative transition-all duration-300 flex-shrink-0'; 
+                headerBg.style.backgroundImage = `url('${tutor.coverImageUrl}')`; 
+                headerBg.style.backgroundSize = 'cover'; 
+                headerBg.style.backgroundPosition = 'center'; 
+            } else { 
+                headerBg.className = `h-24 md:h-32 relative transition-all duration-300 flex-shrink-0 ${tutor.headerColor}`; 
+                headerBg.style.backgroundImage = ''; 
+            }
+
+            document.getElementById('modal-avatar').src = finalAvatar; 
+            document.getElementById('modal-name').innerText = tutor.name; 
+            document.getElementById('modal-rate').innerText = `₱${tutor.hourlyRate}/hr`; 
+            document.getElementById('modal-strand').innerHTML = `<i class="fa-solid fa-id-card text-oxfordRed mr-1"></i> ${tutor.strand}`; 
+            document.getElementById('modal-bio').innerText = tutor.bio;
+            
+            document.getElementById('modal-subjects').innerHTML = tutor.subjects.map(sub => 
+                `<span class="text-xs md:text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full border border-gray-200 shadow-sm"><i class="fa-solid fa-check text-[10px] text-oxfordRed mr-1"></i> ${sub}</span>`
+            ).join('');
+            
+            document.getElementById('modal-schedule').innerHTML = tutor.schedule.map(slot => 
+                `<li class="flex justify-between items-center text-xs md:text-sm border-b border-gray-100 pb-2 last:border-0 last:pb-0"><span class="font-medium text-gray-700">${slot.day}</span><span class="text-gray-600 bg-white px-2.5 py-1 rounded text-[10px] md:text-xs border border-gray-200 shadow-sm">${slot.time}</span></li>`
+            ).join('');
+            
+            document.getElementById('profile-modal').classList.remove('modal-hidden'); 
+            document.getElementById('profile-modal').classList.add('modal-visible'); 
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        function closeProfile() { 
+            selectedTutorId = null; 
+            document.getElementById('profile-modal').classList.remove('modal-visible'); 
+            document.getElementById('profile-modal').classList.add('modal-hidden'); 
+            document.body.style.overflow = 'auto'; 
+        }
+
+        // *** FIX: THE HANDOFF SYSTEM ***
+        function triggerChat() { 
+            const currentUserStr = sessionStorage.getItem('studyio_current_user');
+            
+            if (!currentUserStr) {
+                window.dispatchEvent(new CustomEvent('require-login'));
+                closeProfile();
+                return;
+            }
+
+            const currentUser = JSON.parse(currentUserStr);
+            const tutor = tutorsData.find(t => t.id === selectedTutorId);
+            
+            if (tutor) {
+                const finalAvatar = tutor.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=b91c1c&color=fff&bold=true`;
+                
+                const targetData = {
+                    id: tutor.name, 
+                    name: tutor.name,
+                    avatarUrl: finalAvatar,
+                    strand: tutor.strand,
+                    bio: tutor.bio,
+                    subjects: tutor.subjects,
+                    hourlyRate: tutor.hourlyRate,
+                    role: 'tutor'
+                };
+                
+                localStorage.setItem('studyio_pending_chat_target', JSON.stringify(targetData));
+            }
+
+            closeProfile();
+
+            if (currentUser.role === 'student') {
+                window.location.href = 'student-dashboard.html';
+            } else if (currentUser.role === 'tutor') {
+                window.location.href = 'tutor-dashboard.html';
+            } else {
+                window.location.href = 'admin-dashboard.html';
+            }
+        }
+
+        document.getElementById('global-search-desktop').addEventListener('input', handleFilters); 
+        document.getElementById('global-search-mobile').addEventListener('input', handleFilters); 
+        
+        document.getElementById('subject-filter').addEventListener('change', handleFilters); 
+        
+        document.getElementById('grade-filter').addEventListener('change', () => { 
+            populateSubjectDropdown(); 
+            handleFilters(); 
+        }); 
+        
+        document.getElementById('strand-filter').addEventListener('change', () => { 
+            populateSubjectDropdown(); 
+            handleFilters(); 
+        });
+        
+        populateSubjectDropdown(); 
+        renderTutors(tutorsData);
+    </script>
+</body>
+</html>
