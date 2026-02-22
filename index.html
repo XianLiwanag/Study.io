@@ -857,15 +857,10 @@
                 newTutorAlert: false, 
                 
                 init() {
-                    // *** CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
+                    // *** CATCH LOGOUT REDIRECT ***
                     if (window.location.search.includes('logged_out=1')) {
                         sessionStorage.clear(); 
                         localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
-                        
-                        // SWEEPER FOR STICKY LOGIN BUG!
-                        localStorage.removeItem('studyio_student_profile');
-                        localStorage.removeItem('studyio_tutor_profile');
-                        
                         window.history.replaceState({}, document.title, window.location.pathname);
                         this.currentUser = null;
                         supabaseClient.auth.signOut().catch(()=>{}); 
@@ -889,8 +884,9 @@
                                 
                                 sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
                                 
-                                // FORCE UPDATE LOCAL STORAGE SO THE DASHBOARD CAN SEE IT
-                                let existingProfile = localStorage.getItem('studyio_student_profile');
+                                // *** ACCOUNT-SCOPED STORAGE FOR GOOGLE LOGINS ***
+                                const profileKey = 'studyio_student_profile_' + user.email;
+                                let existingProfile = localStorage.getItem(profileKey);
                                 if (!existingProfile) {
                                     const blankStudentProfile = {
                                         name: fullName, 
@@ -901,12 +897,12 @@
                                         coverImageUrl: "", 
                                         subjects: []
                                     };
-                                    localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                                    localStorage.setItem(profileKey, JSON.stringify(blankStudentProfile));
                                 } else {
                                     let parsed = JSON.parse(existingProfile);
                                     if(!parsed.avatarUrl && avatar) {
                                         parsed.avatarUrl = avatar;
-                                        localStorage.setItem('studyio_student_profile', JSON.stringify(parsed));
+                                        localStorage.setItem(profileKey, JSON.stringify(parsed));
                                     }
                                 }
                                 this.updateIdentity();
@@ -956,7 +952,7 @@
                         }
                     });
 
-                    // Real-Time MQTT Connection (Only for Profile Updates and Applications now)
+                    // Real-Time MQTT Connection
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
                     
                     this.mqttClient.on('connect', () => {
@@ -1014,7 +1010,7 @@
                                 sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
                                 this.currentUser = loggedInUser;
                                 
-                                // Build Profile
+                                // Build Profile with Account Scoping
                                 const personalizedProfile = {
                                     id: this.myApplication.id, 
                                     name: this.myApplication.name, 
@@ -1027,7 +1023,7 @@
                                     subjects: this.myApplication.subjects || [],
                                     schedule: [] 
                                 };
-                                localStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
+                                localStorage.setItem('studyio_tutor_profile_' + this.myApplication.email, JSON.stringify(personalizedProfile));
                                 this.updateIdentity();
                             }
                         }
@@ -1066,7 +1062,7 @@
                     });
                 },
 
-                // *** DYNAMIC IDENTITY RADAR ***
+                // *** ACCOUNT-SCOPED DYNAMIC IDENTITY RADAR ***
                 updateIdentity() {
                     if (!this.currentUser) {
                         this.navName = '';
@@ -1077,52 +1073,21 @@
                     let currentName = this.currentUser.name;
                     let currentAvatar = this.currentUser.avatar || '';
 
-                    if (this.currentUser.role === 'tutor') {
-                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
-                        if (p && p.name) currentName = p.name;
-                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
-                    } 
-                    else if (this.currentUser.role === 'student') {
-                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
-                        if (p && p.name) currentName = p.name;
-                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    if (this.currentUser.email) {
+                        if (this.currentUser.role === 'tutor') {
+                            const p = JSON.parse(localStorage.getItem('studyio_tutor_profile_' + this.currentUser.email));
+                            if (p && p.name) currentName = p.name;
+                            if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                        } 
+                        else if (this.currentUser.role === 'student') {
+                            const p = JSON.parse(localStorage.getItem('studyio_student_profile_' + this.currentUser.email));
+                            if (p && p.name) currentName = p.name;
+                            if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                        }
                     }
 
                     this.navName = currentName;
                     this.navAvatar = currentAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentName)}&background=b91c1c&color=fff&bold=true`;
-                },
-
-                // HELPER: Fetch Avatar safely with Google fallback
-                getNavbarAvatar() {
-                    if (!this.currentUser) return '';
-                    
-                    if (this.currentUser.role === 'tutor') {
-                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
-                        if (p && p.avatarUrl) return p.avatarUrl;
-                    } 
-                    else if (this.currentUser.role === 'student') {
-                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
-                        if (p && p.avatarUrl) return p.avatarUrl;
-                    }
-                    
-                    if (this.currentUser.avatar) return this.currentUser.avatar;
-                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getNavbarName())}&background=b91c1c&color=fff&bold=true`;
-                },
-
-                // *** DYNAMIC NAME SYNC ***
-                getNavbarName() {
-                    if (!this.currentUser) return '';
-                    
-                    if (this.currentUser.role === 'tutor') {
-                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
-                        if (p && p.name) return p.name;
-                    } 
-                    else if (this.currentUser.role === 'student') {
-                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
-                        if (p && p.name) return p.name;
-                    }
-                    
-                    return this.currentUser.name;
                 },
 
                 // *** GOOGLE LOGIC WITH PROMPT FIX ***
@@ -1181,14 +1146,9 @@
                     }, 800);
                 },
 
-                // SWEEPER FOR STICKY LOGIN BUG ADDED HERE
                 async logout() { 
                     this.currentUser = null; 
                     sessionStorage.clear(); 
-                    
-                    localStorage.removeItem('studyio_student_profile');
-                    localStorage.removeItem('studyio_tutor_profile');
-                    
                     localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.reload(); 
@@ -1273,6 +1233,7 @@
 
                             alert(`Application Sent! You can track your status using the new button in the navigation bar. You can also Log In now!`);
                         } else { 
+                            // *** ACCOUNT-SCOPED STORAGE FOR MANUAL SIGN UPS ***
                             const blankStudentProfile = {
                                 name: this.regData.fullName.trim(),
                                 strand: "Grade 11",
@@ -1282,7 +1243,7 @@
                                 coverImageUrl: "",
                                 subjects: this.regData.subjects ? this.regData.subjects.split(',').map(s=>s.trim()) : []
                             };
-                            localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                            localStorage.setItem('studyio_student_profile_' + this.regData.email.trim().toLowerCase(), JSON.stringify(blankStudentProfile));
                             
                             alert(`Success! Welcome ${this.regData.fullName}. You can now Log In!`); 
                         }
@@ -1297,9 +1258,7 @@
                     }
                 },
 
-                setupAndGoToDashboard() {
-                    // Logic left intentionally blank as UI handles navigation securely
-                },
+                setupAndGoToDashboard() {},
 
                 clearApplication() { 
                     this.myApplication = null; 
@@ -1439,7 +1398,6 @@
             }
         ];
 
-        // *** MASTER SYNC VAULT FIX ***
         function reconstructDatabase() {
             let hasChanges = false;
             const savedDirectory = localStorage.getItem('studyio_public_directory');
@@ -1476,18 +1434,21 @@
                 });
             }
 
-            const savedProfile = localStorage.getItem('studyio_tutor_profile');
-            if (savedProfile) {
-                const p = JSON.parse(savedProfile);
-                const index = tutorsData.findIndex(t => t.id === p.id);
-                if (index !== -1) {
-                    if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
-                        tutorsData[index] = { ...tutorsData[index], ...p }; 
+            // *** APPLY ALL SCOPED PROFILES TO THE GRID ***
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('studyio_tutor_profile_')) {
+                    const p = JSON.parse(localStorage.getItem(key));
+                    const index = tutorsData.findIndex(t => t.id === p.id);
+                    if (index !== -1) {
+                        if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
+                            tutorsData[index] = { ...tutorsData[index], ...p }; 
+                            hasChanges = true; 
+                        }
+                    } else { 
+                        tutorsData.unshift(p); 
                         hasChanges = true; 
                     }
-                } else { 
-                    tutorsData.unshift(p); 
-                    hasChanges = true; 
                 }
             }
 
@@ -1801,7 +1762,7 @@
                 const finalAvatar = tutor.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=b91c1c&color=fff&bold=true`;
                 
                 const targetData = {
-                    id: tutor.name, 
+                    id: tutor.id, 
                     name: tutor.name,
                     avatarUrl: finalAvatar,
                     strand: tutor.strand,
