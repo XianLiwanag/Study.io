@@ -32,8 +32,6 @@
     <style>
         [x-cloak] { display: none !important; }
         html { scroll-behavior: smooth; }
-        .chat-scroll::-webkit-scrollbar { width: 6px; }
-        .chat-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
         
         /* Modal Transitions for Vanilla JS */
         #profile-modal { transition: opacity 0.3s ease; }
@@ -762,66 +760,8 @@
         </div>
     </div>
 
-    <div class="fixed bottom-4 right-4 z-50">
-        <button x-show="!chatOpen" @click="chatOpen = true" class="w-14 h-14 sm:w-16 sm:h-16 bg-oxfordRed text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-oxfordDark transition-transform transform hover:scale-105">
-            <i class="fa-solid fa-comments text-2xl sm:text-3xl"></i>
-            <span class="absolute top-0 right-0 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-green-400 border-2 border-white rounded-full"></span>
-        </button>
-        
-        <div x-cloak x-show="chatOpen" class="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 w-full sm:w-[400px] h-[100dvh] sm:h-auto bg-white sm:rounded-t-xl shadow-2xl border-t sm:border border-gray-200 flex flex-col overflow-hidden transition-transform transform z-50">
-            
-            <div class="bg-gray-800 text-white p-3 md:p-4 flex justify-between items-center cursor-pointer flex-shrink-0" @click="chatOpen = false">
-                <div class="flex items-center gap-2">
-                    <div class="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse border border-green-200"></div>
-                    <span class="font-bold text-sm tracking-wide" x-text="'Live Room: ' + chatTarget"></span>
-                </div>
-                <button class="hover:text-gray-300 transition p-2 -mr-2"><i class="fa-solid fa-chevron-down text-lg"></i></button>
-            </div>
-            
-            <div id="chat-messages-container" class="flex-1 sm:h-80 p-4 bg-gray-50 overflow-y-auto flex flex-col gap-3 chat-scroll">
-                <template x-for="(msg, index) in chatMessages" :key="index">
-                    <div class="w-full flex flex-col">
-                        
-                        <div x-show="msg.sender === 'system'" class="self-center bg-yellow-100 text-yellow-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-yellow-200 my-1">
-                            <span x-text="msg.text"></span>
-                        </div>
-                        
-                        <div x-show="msg.sender === 'other'" class="self-start flex flex-col w-full mt-2 max-w-[85%]">
-                            <span class="text-[10px] text-gray-500 ml-11 mb-0.5 font-semibold tracking-wide" x-text="msg.senderName"></span>
-                            <div class="flex gap-2 w-full">
-                                <div class="w-9 h-9 rounded-full bg-gray-800 text-white flex justify-center items-center text-xs shadow-sm flex-shrink-0 font-bold overflow-hidden border border-gray-200">
-                                    <img x-show="msg.avatarUrl" :src="msg.avatarUrl" class="w-full h-full object-cover">
-                                    <span x-show="!msg.avatarUrl" x-text="msg.senderName ? msg.senderName.charAt(0).toUpperCase() : 'T'"></span>
-                                </div>
-                                <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm md:text-base shadow-sm leading-relaxed" x-text="msg.text"></div>
-                            </div>
-                        </div>
-                        
-                        <div x-show="msg.sender === 'me'" class="self-end flex flex-col w-full mt-2 max-w-[85%] items-end">
-                            <span class="text-[10px] text-gray-500 mr-11 mb-0.5 font-semibold tracking-wide">You</span>
-                            <div class="flex gap-2 w-full justify-end">
-                                <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm md:text-base shadow-sm leading-relaxed" x-text="msg.text"></div>
-                                <div class="w-9 h-9 rounded-full bg-gray-200 flex justify-center items-center text-xs shadow-sm flex-shrink-0 font-bold overflow-hidden border border-gray-300">
-                                    <img x-show="msg.avatarUrl" :src="msg.avatarUrl" class="w-full h-full object-cover">
-                                    <span x-show="!msg.avatarUrl" class="text-gray-600" x-text="navName ? navName.charAt(0).toUpperCase() : 'M'"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-            
-            <div class="p-3 border-t border-gray-200 bg-white flex gap-2 flex-shrink-0 pb-safe">
-                <input type="text" x-model="newMessage" @keydown.enter="sendMessage()" placeholder="Type a message..." class="flex-1 text-sm md:text-base border border-gray-300 rounded-full px-5 py-2.5 focus:outline-none focus:ring-1 focus:ring-oxfordRed focus:border-oxfordRed transition shadow-inner">
-                <button @click="sendMessage()" class="bg-oxfordRed text-white w-11 h-11 rounded-full flex justify-center items-center hover:bg-oxfordDark transition shadow-md flex-shrink-0">
-                    <i class="fa-solid fa-paper-plane text-sm"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        // *** TAB ISOLATION FIX *** // Generates a unique secure lock for this specific browser tab so Supabase cannot leak
+        // *** TAB ISOLATION FIX ***
         const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('studyio_tab_id', tabId);
 
@@ -831,7 +771,7 @@
             { 
                 auth: { 
                     storage: window.sessionStorage,
-                    storageKey: 'studyio_auth_' + tabId // Absolute Tab Lockdown
+                    storageKey: 'studyio_auth_' + tabId 
                 } 
             }
         );
@@ -866,14 +806,7 @@
                 },
                 isSubmitting: false, 
                 
-                // Chat States
-                chatOpen: false, 
-                chatTarget: 'Tutor', 
-                chatMessages: [], 
-                newMessage: '',
                 mqttClient: null, 
-                mySessionId: 'user_' + Math.random().toString(36).substr(2, 9), 
-                chatTopic: null, 
                 newTutorAlert: false, 
                 
                 init() {
@@ -944,6 +877,12 @@
                         }
                     }, 200);
 
+                    // *** TRIGGER LOGIN MODAL FROM VANILLA JS ***
+                    window.addEventListener('require-login', () => {
+                        alert("Please log in to message a tutor!");
+                        this.loginModalOpen = true;
+                    });
+
                     // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
                     window.addEventListener('storage', () => this.updateIdentity());
                     window.addEventListener('visibilitychange', () => {
@@ -965,7 +904,7 @@
                         }
                     });
 
-                    // Real-Time MQTT Connection
+                    // Real-Time MQTT Connection (Only for Profile Updates and Applications now)
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
                     
                     this.mqttClient.on('connect', () => {
@@ -977,20 +916,6 @@
 
                     this.mqttClient.on('message', (topic, message) => {
                         const parsedMsg = JSON.parse(message.toString());
-                        
-                        // Handle Incoming Chat
-                        if (parsedMsg.type === 'chat') {
-                            this.chatMessages.push({ 
-                                sender: parsedMsg.senderId === this.mySessionId ? 'me' : 'other', 
-                                senderName: parsedMsg.senderName || 'User', 
-                                avatarUrl: parsedMsg.avatarUrl || null, 
-                                text: parsedMsg.text 
-                            });
-                            
-                            // FORCE ALPINE TO RE-RENDER CHAT WINDOW
-                            this.chatMessages = [...this.chatMessages];
-                            this.scrollToBottom();
-                        }
                         
                         // Handle Profile Updates
                         if (parsedMsg.type === 'profile_update') {
@@ -1086,27 +1011,6 @@
                                 }
                             }
                         }
-                    });
-
-                    // Trigger Chat Modal
-                    window.addEventListener('open-chat', (e) => {
-                        if (!this.currentUser) {
-                            alert("Please log in to message a tutor!");
-                            this.loginModalOpen = true;
-                            return;
-                        }
-
-                        this.chatTarget = e.detail;
-                        
-                        if(this.chatTopic) { 
-                            this.mqttClient.unsubscribe(this.chatTopic); 
-                        }
-                        this.chatTopic = 'studyio/room/' + this.chatTarget.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                        this.mqttClient.subscribe(this.chatTopic);
-                        
-                        this.chatMessages = [{ sender: 'system', text: `LIVE CHAT ACTIVE: Connected to ${this.chatTarget}.` }];
-                        this.chatOpen = true; 
-                        this.scrollToBottom();
                     });
                 },
 
@@ -1233,7 +1137,6 @@
                     window.location.reload(); 
                 },
 
-                // *** FIX: SAVE APPLICATION TO ADMIN VAULT DIRECTLY ***
                 async submitRegistration() {
                     this.isSubmitting = true;
                     try {
@@ -1337,8 +1240,6 @@
                     }
                 },
 
-                // NOTE: setupAndGoToDashboard is no longer strictly used by the UI since we hardcoded the anchor tag, 
-                // but it handles initial profile building when an application is approved.
                 setupAndGoToDashboard() {
                     // Logic left intentionally blank as UI handles navigation securely
                 },
@@ -1352,48 +1253,6 @@
                 openModal(type) { 
                     this.modalType = type; 
                     this.modalOpen = true; 
-                },
-
-                // *** FIX: BUILD THE PROFILE CARD TO SEND TO THE INBOX ***
-                sendMessage() { 
-                    if (this.newMessage.trim() === '') return; 
-                    
-                    const myName = this.getNavbarName() || "Student";
-                    let myAvatar = this.getNavbarAvatar(); 
-                    
-                    let myProfile = { 
-                        name: myName, 
-                        strand: "Unspecified", 
-                        bio: "Looking for help.", 
-                        subjects: [], 
-                        role: "student" 
-                    };
-                    
-                    if (this.currentUser && this.currentUser.role === 'student') {
-                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
-                        if (p) myProfile = { ...p, role: 'student' };
-                    } else if (this.currentUser && this.currentUser.role === 'tutor') {
-                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
-                        if (p) myProfile = { ...p, role: 'tutor' };
-                    }
-
-                    this.mqttClient.publish(this.chatTopic, JSON.stringify({ 
-                        type: 'chat', 
-                        senderId: this.mySessionId, 
-                        senderName: myName, 
-                        avatarUrl: myAvatar,
-                        senderProfile: myProfile, // The missing link for the Inbox!
-                        text: this.newMessage 
-                    })); 
-                    
-                    this.newMessage = ''; 
-                },
-
-                scrollToBottom() { 
-                    setTimeout(() => { 
-                        const c = document.getElementById('chat-messages-container'); 
-                        if (c) c.scrollTop = c.scrollHeight; 
-                    }, 50); 
                 },
 
                 scrollTo(id) { 
@@ -1868,9 +1727,45 @@
             document.body.style.overflow = 'auto'; 
         }
 
+        // *** FIX: THE HANDOFF SYSTEM ***
         function triggerChat() { 
-            window.dispatchEvent(new CustomEvent('open-chat', { detail: selectedTutorName })); 
-            closeProfile(); 
+            const currentUserStr = sessionStorage.getItem('studyio_current_user');
+            
+            if (!currentUserStr) {
+                window.dispatchEvent(new CustomEvent('require-login'));
+                closeProfile();
+                return;
+            }
+
+            const currentUser = JSON.parse(currentUserStr);
+            const tutor = tutorsData.find(t => t.id === selectedTutorId);
+            
+            if (tutor) {
+                const finalAvatar = tutor.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=b91c1c&color=fff&bold=true`;
+                
+                const targetData = {
+                    id: tutor.name, 
+                    name: tutor.name,
+                    avatarUrl: finalAvatar,
+                    strand: tutor.strand,
+                    bio: tutor.bio,
+                    subjects: tutor.subjects,
+                    hourlyRate: tutor.hourlyRate,
+                    role: 'tutor'
+                };
+                
+                localStorage.setItem('studyio_pending_chat_target', JSON.stringify(targetData));
+            }
+
+            closeProfile();
+
+            if (currentUser.role === 'student') {
+                window.location.href = 'student-dashboard.html';
+            } else if (currentUser.role === 'tutor') {
+                window.location.href = 'tutor-dashboard.html';
+            } else {
+                window.location.href = 'admin-dashboard.html';
+            }
         }
 
         document.getElementById('global-search-desktop').addEventListener('input', handleFilters); 
