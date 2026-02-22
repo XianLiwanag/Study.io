@@ -96,8 +96,8 @@
                     </a>
 
                     <div class="flex items-center gap-2 text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-                        <img :src="getNavbarAvatar()" class="w-7 h-7 rounded-full object-cover border border-gray-300">
-                        <span class="font-semibold text-sm truncate max-w-[100px]" x-text="getNavbarName()"></span>
+                        <img :src="navAvatar" class="w-7 h-7 rounded-full object-cover border border-gray-300 bg-white">
+                        <span class="font-semibold text-sm truncate max-w-[100px]" x-text="navName"></span>
                     </div>
                     <button @click="logout()" class="text-sm text-gray-500 hover:text-oxfordRed transition font-medium">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out
@@ -137,9 +137,9 @@
 
                 <div x-show="currentUser" class="pt-4 border-t border-gray-100" x-cloak>
                     <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                        <img :src="getNavbarAvatar()" class="w-10 h-10 rounded-full object-cover border border-gray-300">
+                        <img :src="navAvatar" class="w-10 h-10 rounded-full object-cover border border-gray-300 bg-white">
                         <div>
-                            <div class="font-bold text-gray-800 text-sm" x-text="getNavbarName()"></div>
+                            <div class="font-bold text-gray-800 text-sm" x-text="navName"></div>
                             <div class="text-xs text-gray-500 uppercase" x-text="currentUser?.role"></div>
                         </div>
                     </div>
@@ -802,7 +802,7 @@
                                 <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm md:text-base shadow-sm leading-relaxed" x-text="msg.text"></div>
                                 <div class="w-9 h-9 rounded-full bg-gray-200 flex justify-center items-center text-xs shadow-sm flex-shrink-0 font-bold overflow-hidden border border-gray-300">
                                     <img x-show="msg.avatarUrl" :src="msg.avatarUrl" class="w-full h-full object-cover">
-                                    <span x-show="!msg.avatarUrl" class="text-gray-600" x-text="getNavbarName().charAt(0).toUpperCase()"></span>
+                                    <span x-show="!msg.avatarUrl" class="text-gray-600" x-text="navName ? navName.charAt(0).toUpperCase() : 'M'"></span>
                                 </div>
                             </div>
                         </div>
@@ -834,6 +834,11 @@
 
                 // Auth States
                 currentUser: null, 
+                
+                // *** NEW REACTIVE IDENTITY VARIABLES ***
+                navName: '',
+                navAvatar: '',
+
                 loginModalOpen: false, 
                 isLoggingIn: false, 
                 loginError: '', 
@@ -903,10 +908,12 @@
                                         localStorage.setItem('studyio_student_profile', JSON.stringify(parsed));
                                     }
                                 }
+                                this.updateIdentity();
                             }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
                             sessionStorage.clear();
+                            this.updateIdentity();
                         }
                     });
 
@@ -914,9 +921,18 @@
                     setTimeout(() => {
                         if (!this.currentUser) {
                             const savedSession = sessionStorage.getItem('studyio_current_user');
-                            if (savedSession) { this.currentUser = JSON.parse(savedSession); }
+                            if (savedSession) { 
+                                this.currentUser = JSON.parse(savedSession); 
+                                this.updateIdentity();
+                            }
                         }
                     }, 200);
+
+                    // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
+                    window.addEventListener('storage', () => this.updateIdentity());
+                    window.addEventListener('visibilitychange', () => {
+                        if (!document.hidden) this.updateIdentity();
+                    });
 
                     // Check saved application tracker
                     const savedApp = sessionStorage.getItem('studyio_my_application');
@@ -999,6 +1015,7 @@
                                 const loggedInUser = { name: this.myApplication.name, email: this.myApplication.email, role: 'tutor' };
                                 sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
                                 this.currentUser = loggedInUser;
+                                this.updateIdentity();
                             }
                         }
 
@@ -1055,6 +1072,33 @@
                     });
                 },
 
+                // *** NEW DYNAMIC IDENTITY RADAR ***
+                // Actively forces Alpine to redraw the Navbar with the latest saved profile data
+                updateIdentity() {
+                    if (!this.currentUser) {
+                        this.navName = '';
+                        this.navAvatar = '';
+                        return;
+                    }
+
+                    let currentName = this.currentUser.name;
+                    let currentAvatar = this.currentUser.avatar || '';
+
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.name) currentName = p.name;
+                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.name) currentName = p.name;
+                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    }
+
+                    this.navName = currentName;
+                    this.navAvatar = currentAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentName)}&background=b91c1c&color=fff&bold=true`;
+                },
+
                 // HELPER: Fetch Avatar safely with Google fallback
                 getNavbarAvatar() {
                     if (!this.currentUser) return '';
@@ -1068,6 +1112,7 @@
                         if (p && p.avatarUrl) return p.avatarUrl;
                     }
                     
+                    // Fall back to the Google Avatar injected into the session, or the UI generator
                     if (this.currentUser.avatar) return this.currentUser.avatar;
                     return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getNavbarName())}&background=b91c1c&color=fff&bold=true`;
                 },
@@ -1120,18 +1165,21 @@
                             this.loginModalOpen = false; 
                             this.loginData = { email: '', password: '' }; 
                             sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
                         } 
                         else if (inputEmail === 'admin@study.io' && inputPass === 'password123') {
                             this.currentUser = { name: 'Super Admin', email: 'admin@study.io', role: 'admin' };
                             this.loginModalOpen = false; 
                             this.loginData = { email: '', password: '' }; 
                             sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
                         }
                         else if (registeredCreds && inputEmail === registeredCreds.email.trim().toLowerCase() && inputPass === registeredCreds.password.trim()) {
                             this.currentUser = { name: registeredCreds.name, email: registeredCreds.email, role: registeredCreds.role };
                             this.loginModalOpen = false; 
                             this.loginData = { email: '', password: '' };
                             sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
                         } 
                         else { 
                             this.loginError = 'Invalid email or password. Please try again.'; 
@@ -1198,9 +1246,30 @@
                             if (existingApps) {
                                 existingApps = JSON.parse(existingApps);
                             } else {
+                                // Provide defaults just in case Admin Dashboard has never been opened
                                 existingApps = [
-                                    { id: 101, name: "Miguel Cruz", email: "miguel.cruz@gmail.com", strand: "Grade 12 - STEM", age: 18, contact: "+63 917 123 4567", hourlyRate: 150, subjects: ["General Chemistry 1", "Basic Calculus"], bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." },
-                                    { id: 102, name: "Isabella Reyes", email: "isa.reyes22@yahoo.com", strand: "Grade 12 - HUMSS", age: 17, contact: "+63 918 987 6543", hourlyRate: 120, subjects: ["Creative Writing", "Philippine Politics and Governance"], bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" }
+                                    { 
+                                        id: 101, 
+                                        name: "Miguel Cruz", 
+                                        email: "miguel.cruz@gmail.com", 
+                                        strand: "Grade 12 - STEM", 
+                                        age: 18, 
+                                        contact: "+63 917 123 4567", 
+                                        hourlyRate: 150, 
+                                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                                        bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
+                                    },
+                                    { 
+                                        id: 102, 
+                                        name: "Isabella Reyes", 
+                                        email: "isa.reyes22@yahoo.com", 
+                                        strand: "Grade 12 - HUMSS", 
+                                        age: 17, 
+                                        contact: "+63 918 987 6543", 
+                                        hourlyRate: 120, 
+                                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                                        bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
+                                    }
                                 ];
                             }
                             existingApps.unshift(newApplicant);
@@ -1307,67 +1376,96 @@
 
         let tutorsData = [
             { 
-                id: 1, name: "Janella Manansala", strand: "Grade 12 - STEM", 
+                id: 1, 
+                name: "Janella Manansala", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["General Physics 2", "Personal Development"], 
                 bio: "I specialize in General Physics and Calculus. I help students simplify complex formulas!", 
                 schedule: [{ day: "Monday", time: "4:00 PM - 6:00 PM" }, { day: "Saturday", time: "10:00 AM - 2:00 PM" }], 
-                hourlyRate: 200, headerColor: "bg-oxfordRed" 
+                hourlyRate: 200, 
+                headerColor: "bg-oxfordRed" 
             },
             { 
-                id: 2, name: "Xian Liwanag", strand: "Grade 12 - STEM", 
+                id: 2, 
+                name: "Xian Liwanag", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["Understanding Culture, Society, and Politics", "Statistics and Probability"], 
                 bio: "Passionate about social sciences and numbers alike.", 
                 schedule: [{ day: "Tuesday", time: "5:00 PM - 7:00 PM" }], 
-                hourlyRate: 150, headerColor: "bg-gray-800" 
+                hourlyRate: 150, 
+                headerColor: "bg-gray-800" 
             },
             { 
-                id: 3, name: "Anjela Magcalas", strand: "Grade 12 - STEM", 
+                id: 3, 
+                name: "Anjela Magcalas", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["Physical Education and Health", "General Biology 1", "General Biology 2"], 
                 bio: "Future doctor here! Let me help you with biology concepts.", 
                 schedule: [{ day: "Monday", time: "6:00 PM - 8:00 PM" }], 
-                hourlyRate: 250, headerColor: "bg-blue-800" 
+                hourlyRate: 250, 
+                headerColor: "bg-blue-800" 
             },
             { 
-                id: 4, name: "Jasmaine Magcalas", strand: "Grade 12 - STEM", 
+                id: 4, 
+                name: "Jasmaine Magcalas", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["21st Century Literature", "Entrepreneurship", "Business Math"], 
                 bio: "Business-minded and a bookworm.", 
                 schedule: [{ day: "Wednesday", time: "3:00 PM - 5:00 PM" }], 
-                hourlyRate: 180, headerColor: "bg-emerald-800" 
+                hourlyRate: 180, 
+                headerColor: "bg-emerald-800" 
             },
             { 
-                id: 5, name: "Cedric Santos", strand: "Grade 12 - ABM", 
+                id: 5, 
+                name: "Cedric Santos", 
+                strand: "Grade 12 - ABM", 
                 subjects: ["Fundamentals of Accountancy, Business, & Math 1", "Fundamentals of Accountancy, Business, & Math 2", "Business Math"], 
                 bio: "Numbers tell a story. Let's make sure yours makes sense.", 
                 schedule: [{ day: "Tuesday", time: "4:00 PM - 6:00 PM" }], 
-                hourlyRate: 180, headerColor: "bg-yellow-600", avatarUrl: "", coverImageUrl: "" 
+                hourlyRate: 180, 
+                headerColor: "bg-yellow-600", 
+                avatarUrl: "", 
+                coverImageUrl: "" 
             },
             { 
-                id: 6, name: "Johann Hernandez", strand: "Grade 12 - STEM", 
+                id: 6, 
+                name: "Johann Hernandez", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["Introduction to the Philosophy of the Human Person", "General Biology 1", "General Biology 2"], 
                 bio: "Let's explore Philosophy and Biology together.", 
                 schedule: [{ day: "Monday", time: "5:00 PM - 7:00 PM" }], 
-                hourlyRate: 200, headerColor: "bg-teal-700" 
+                hourlyRate: 200, 
+                headerColor: "bg-teal-700" 
             },
             { 
-                id: 7, name: "Kyle Ikan", strand: "Grade 11 - STEM", 
+                id: 7, 
+                name: "Kyle Ikan", 
+                strand: "Grade 11 - STEM", 
                 subjects: ["Statistics and Probability", "Basic Calculus"], 
                 bio: "Math doesn't have to be intimidating!", 
                 schedule: [{ day: "Friday", time: "3:00 PM - 6:00 PM" }], 
-                hourlyRate: 150, headerColor: "bg-indigo-700" 
+                hourlyRate: 150, 
+                headerColor: "bg-indigo-700" 
             },
             { 
-                id: 8, name: "Akon Mariano", strand: "Grade 12 - STEM", 
+                id: 8, 
+                name: "Akon Mariano", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["Computer System Servicing 12"], 
                 bio: "Ready to help you master Computer System Servicing 12 with practical tips and tricks!", 
                 schedule: [{ day: "Wednesday", time: "4:00 PM - 6:00 PM" }, { day: "Saturday", time: "1:00 PM - 3:00 PM" }], 
-                hourlyRate: 150, headerColor: "bg-blue-600" 
+                hourlyRate: 150, 
+                headerColor: "bg-blue-600" 
             },
             { 
-                id: 9, name: "Ace Magno", strand: "Grade 12 - STEM", 
+                id: 9, 
+                name: "Ace Magno", 
+                strand: "Grade 12 - STEM", 
                 subjects: ["Computer System Servicing 11"], 
                 bio: "I'll guide you through the basics of Computer System Servicing 11 so you can build a strong foundation.", 
                 schedule: [{ day: "Tuesday", time: "5:00 PM - 7:00 PM" }, { day: "Thursday", time: "5:00 PM - 7:00 PM" }], 
-                hourlyRate: 100, headerColor: "bg-green-600" 
+                hourlyRate: 100, 
+                headerColor: "bg-green-600" 
             }
         ];
 
@@ -1396,8 +1494,14 @@
                 parsedAdmin.forEach(at => {
                     if (!tutorsData.some(t => t.id === at.id)) {
                         tutorsData.unshift({
-                            id: at.id, name: at.name, strand: at.strand, hourlyRate: at.hourlyRate,
-                            bio: "New tutor on the platform.", subjects: [], schedule: [], headerColor: "bg-gray-800"
+                            id: at.id, 
+                            name: at.name, 
+                            strand: at.strand, 
+                            hourlyRate: at.hourlyRate,
+                            bio: "New tutor on the platform.", 
+                            subjects: [], 
+                            schedule: [], 
+                            headerColor: "bg-gray-800"
                         });
                         hasChanges = true;
                     }
@@ -1435,7 +1539,12 @@
 
         const curriculumData = {
             "Grade 11": { 
-                "Core": ["Physical Education and Health", "General Mathematics", "21st Century Literature", "Empowerment Technologies", "Entrepreneurship", "Earth Science", "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"], 
+                "Core": [
+                    "Physical Education and Health", "General Mathematics", "21st Century Literature", 
+                    "Empowerment Technologies", "Entrepreneurship", "Earth Science", 
+                    "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", 
+                    "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"
+                ], 
                 "STEM": ["General Biology 1", "Pre-Calculus", "General Chemistry 1", "General Biology 2", "Basic Calculus"], 
                 "ABM": ["Organization and Management", "Business Math", "Applied Economics", "Principles of Marketing", "Fundamentals of Accountancy, Business, & Math 1"], 
                 "HUMSS": ["Introduction to World Religion and Belief System", "Discipline and Ideas in Social Sciences", "Philippine Politics and Governance", "Creative Writing", "Discipline and Ideas in the Applied Social Sciences"], 
@@ -1443,7 +1552,12 @@
                 "HE": ["Cookery 11", "Bread and Pastry Production"] 
             },
             "Grade 12": { 
-                "Core": ["Personal Development", "Oral Communication in Context", "Understanding Culture, Society, and Politics", "Pagsulat sa Filipino (Akademik)", "Pagsulat sa Filipino (TekBok)", "Practical Research 2", "Contemporary Philippine Arts from the Regions", "Physical Education", "English for Academics and Professional Purposes", "Inquiries, Investigation, and Immersion", "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", "Media Information and Literacy"], 
+                "Core": [
+                    "Personal Development", "Oral Communication in Context", "Understanding Culture, Society, and Politics", 
+                    "Pagsulat sa Filipino (Akademik)", "Pagsulat sa Filipino (TekBok)", "Practical Research 2", 
+                    "Contemporary Philippine Arts from the Regions", "Physical Education", "English for Academics and Professional Purposes", 
+                    "Inquiries, Investigation, and Immersion", "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", "Media Information and Literacy"
+                ], 
                 "STEM": ["General Physics 1", "General Chemistry 2", "Disaster Readiness and Risk Reduction", "General Physics 2", "Capstone"], 
                 "ABM": ["Fundamentals of Accountancy, Business, & Math 2", "Physical Science", "Business Finance", "Business Ethics and Social Responsibility", "Business Enterprise and Simulation"], 
                 "HUMSS": ["Creative Non-Fiction", "Physical Science", "Community, Engagement, Solidarity and Citizenship", "Trends, Networks, and Critical Thinking", "Culminating Activity"], 
@@ -1505,13 +1619,27 @@
                 
                 let matchesGrade = true;
                 if (gradeTerm !== "") {
-                    const allGradeSubjects = [...curriculumData[gradeTerm]["Core"], ...curriculumData[gradeTerm]["STEM"], ...curriculumData[gradeTerm]["ABM"], ...curriculumData[gradeTerm]["HUMSS"], ...curriculumData[gradeTerm]["ICT"], ...curriculumData[gradeTerm]["HE"]].map(s => s.toLowerCase());
+                    const allGradeSubjects = [
+                        ...curriculumData[gradeTerm]["Core"], 
+                        ...curriculumData[gradeTerm]["STEM"], 
+                        ...curriculumData[gradeTerm]["ABM"], 
+                        ...curriculumData[gradeTerm]["HUMSS"], 
+                        ...curriculumData[gradeTerm]["ICT"], 
+                        ...curriculumData[gradeTerm]["HE"]
+                    ].map(s => s.toLowerCase());
+                    
                     matchesGrade = t.subjects.some(sub => allGradeSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
                 }
                 
                 let matchesStrand = true;
                 if (strandTerm !== "") {
-                    const allStrandSubjects = [...curriculumData["Grade 11"]["Core"], ...curriculumData["Grade 12"]["Core"], ...curriculumData["Grade 11"][strandTerm], ...curriculumData["Grade 12"][strandTerm]].map(s => s.toLowerCase());
+                    const allStrandSubjects = [
+                        ...curriculumData["Grade 11"]["Core"], 
+                        ...curriculumData["Grade 12"]["Core"], 
+                        ...curriculumData["Grade 11"][strandTerm], 
+                        ...curriculumData["Grade 12"][strandTerm]
+                    ].map(s => s.toLowerCase());
+                    
                     matchesStrand = t.subjects.some(sub => allStrandSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
                 }
                 
@@ -1628,8 +1756,14 @@
         document.getElementById('global-search-mobile').addEventListener('input', handleFilters); 
         
         document.getElementById('subject-filter').addEventListener('change', handleFilters); 
-        document.getElementById('grade-filter').addEventListener('change', () => { populateSubjectDropdown(); handleFilters(); }); 
-        document.getElementById('strand-filter').addEventListener('change', () => { populateSubjectDropdown(); handleFilters(); });
+        document.getElementById('grade-filter').addEventListener('change', () => { 
+            populateSubjectDropdown(); 
+            handleFilters(); 
+        }); 
+        document.getElementById('strand-filter').addEventListener('change', () => { 
+            populateSubjectDropdown(); 
+            handleFilters(); 
+        });
         
         populateSubjectDropdown(); 
         renderTutors(tutorsData);
