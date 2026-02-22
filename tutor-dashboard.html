@@ -82,7 +82,7 @@
             <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2">
                 <i class="fa-solid fa-user-pen"></i> My Profile
             </button>
-            <button @click="activeTab = 'inbox'" :class="activeTab === 'inbox' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2 relative">
+            <button @click="activeTab = 'inbox'; scrollToBottom();" :class="activeTab === 'inbox' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2 relative">
                 <i class="fa-solid fa-inbox"></i> Student Inbox
                 <span x-show="contacts.length > 0" class="absolute top-3 -right-3 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
             </button>
@@ -245,14 +245,11 @@
                             </select>
                             <button @click="addSubject()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Subject</button>
                         </div>
-                        
                         <div class="flex flex-wrap gap-2">
                             <template x-for="(sub, index) in profile.subjects" :key="index">
                                 <div class="bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-xs sm:text-sm flex items-center gap-2 sm:gap-3 shadow-sm">
                                     <span x-text="sub" class="font-medium"></span>
-                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1">
-                                        <i class="fa-solid fa-times"></i>
-                                    </button>
+                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1"><i class="fa-solid fa-times"></i></button>
                                 </div>
                             </template>
                         </div>
@@ -274,7 +271,6 @@
                             <input type="text" x-model="newScheduleTime" @keydown.enter.prevent="addSchedule()" placeholder="e.g., 4:00 PM - 6:00 PM" class="flex-1 border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm w-full">
                             <button @click="addSchedule()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Slot</button>
                         </div>
-                        
                         <div class="space-y-2">
                             <template x-for="(slot, index) in profile.schedule" :key="index">
                                 <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg shadow-sm">
@@ -282,9 +278,7 @@
                                         <span class="font-bold text-gray-800 text-xs sm:text-sm w-20 sm:w-24" x-text="slot.day"></span>
                                         <span class="text-gray-600 bg-white px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-sm border border-gray-200 shadow-sm" x-text="slot.time"></span>
                                     </div>
-                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition">
-                                        <i class="fa-solid fa-trash text-xs sm:text-sm"></i>
-                                    </button>
+                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition"><i class="fa-solid fa-trash text-xs sm:text-sm"></i></button>
                                 </div>
                             </template>
                         </div>
@@ -304,7 +298,9 @@
                 <div class="overflow-y-auto flex-1 chat-scroll p-2 space-y-1">
                     <template x-for="contact in contacts" :key="contact.id">
                         <button @click="selectContact(contact)" :class="activeContact?.id === contact.id ? 'bg-oxfordRed text-white shadow-md' : 'bg-transparent text-gray-800 hover:bg-gray-200'" class="w-full text-left p-3 rounded-lg transition flex items-center gap-3">
-                            <img :src="contact.avatarUrl" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
+                            
+                            <img :src="contact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random&color=fff&bold=true`" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
+                            
                             <div class="overflow-hidden flex-1">
                                 <div class="font-bold text-sm truncate" x-text="contact.name"></div>
                                 <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate">
@@ -330,14 +326,16 @@
                     <div class="flex flex-col h-full w-full">
                         <div class="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
                             <div class="flex items-start gap-4">
-                                <img :src="activeContact.avatarUrl" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
+                                
+                                <img :src="activeContact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeContact.name)}&background=random&color=fff&bold=true`" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
+                                
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
                                         <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-wide" x-text="activeContact.role"></span>
                                     </div>
                                     <p class="text-xs font-semibold text-oxfordRed mb-1" x-text="activeContact.strand"></p>
-                                    <p class="text-xs text-gray-600 line-clamp-2 italic pr-4">"<span x-text="activeContact.bio || 'Needs help studying.'"></span>"</p>
+                                    <p class="text-xs text-gray-600 line-clamp-2 italic">"<span x-text="activeContact.bio || 'Needs help studying.'"></span>"</p>
                                 </div>
                             </div>
                             <div class="mt-3 flex flex-wrap gap-1.5" x-show="activeContact.subjects && activeContact.subjects.length > 0">
@@ -351,18 +349,25 @@
                             <template x-for="(msg, index) in activeChatHistory" :key="index">
                                 <div class="w-full flex flex-col">
                                     
-                                    <div x-show="msg.senderId === mySessionId" class="self-end flex flex-col w-full max-w-[85%] items-end">
+                                    <div x-show="msg.isSystemAlert" class="self-center bg-blue-50 text-blue-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-blue-200 my-1 font-medium">
+                                        <span x-text="msg.text"></span>
+                                    </div>
+
+                                    <div x-show="msg.senderId === mySessionId && !msg.isSystemAlert" class="self-end flex flex-col w-full max-w-[85%] items-end">
                                         <div class="flex gap-2 w-full justify-end">
                                             <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
                                     
-                                    <div x-show="msg.senderId !== mySessionId" class="self-start flex flex-col w-full max-w-[85%]">
+                                    <div x-show="msg.senderId !== mySessionId && !msg.isSystemAlert" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
-                                            <img :src="msg.avatarUrl" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            
+                                            <img :src="msg.avatarUrl || msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'S')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            
                                             <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
+
                                 </div>
                             </template>
                         </div>
@@ -428,7 +433,7 @@
                 inboxMessage: '',
 
                 mqttClient: null, 
-                mySessionId: '', // Set in init() dynamically based on Profile Name
+                mySessionId: '', // Set dynamically
                 chatTopic: null, 
                 syncTimer: null, 
 
@@ -461,7 +466,8 @@
                         }
                     }
 
-                    // *** ESTABLISH PERMANENT SESSION ID FOR INBOX ROUTING ***
+                    // *** ESTABLISH PERMANENT SESSION ID ***
+                    // We lock this strictly to the User's Name so refreshing the tab doesn't erase their history!
                     this.mySessionId = this.profile.name || (this.currentUser ? this.currentUser.name : 'Unknown_Tutor');
 
                     // LOAD INBOX HISTORY FROM MEMORY
@@ -471,7 +477,7 @@
                         this.rebuildContacts();
                     }
 
-                    // *** CROSS-TAB RADAR FOR INSTANT CHAT SYNC ***
+                    // *** CROSS-TAB RADAR *** // Instantly updates the Tutor Inbox if a Student dropped a message into the vault
                     window.addEventListener('storage', (e) => {
                         if (e.key === 'studyio_tutor_inbox_history_' + this.mySessionId) {
                             this.allMessages = JSON.parse(e.newValue || '[]');
@@ -500,7 +506,8 @@
                         
                         if (parsedMsg.type === 'chat') {
                             
-                            // *** FIX: PREVENT DOUBLE TEXTING ECHO ***
+                            // *** FIX 1: THE ANTI-ECHO RULE ***
+                            // Prevent double texting when the network bounces our own message back to us
                             if (parsedMsg.senderId === this.mySessionId) return;
 
                             this.allMessages.push(parsedMsg);
@@ -508,7 +515,7 @@
                             
                             this.rebuildContacts();
                             
-                            // *** ALPINE REACTIVITY FIX ***
+                            // *** FIX 2: FORCE ALPINE RE-RENDER ***
                             this.allMessages = [...this.allMessages];
                             
                             this.scrollToBottom();
@@ -524,20 +531,33 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** FIX: INBOX CONTACTS AND ROLES ***
+                // *** FIX 3: DUPLICATE PROFILE MERGING ***
+                // Rebuild contacts using the exact Name as the dictionary key to merge duplicates perfectly
                 rebuildContacts() {
                     const uniqueContacts = {};
                     
                     this.allMessages.forEach(msg => {
-                        if (msg.senderId !== this.mySessionId && msg.senderProfile) {
-                            uniqueContacts[msg.senderId] = {
-                                id: msg.senderId,
-                                name: msg.senderProfile.name || msg.senderName,
-                                avatarUrl: msg.avatarUrl,
-                                strand: msg.senderProfile.strand || 'Unknown Strand',
-                                bio: msg.senderProfile.bio || '',
-                                subjects: msg.senderProfile.subjects || [],
-                                role: msg.senderProfile.role || 'student' 
+                        let contactProfile = null;
+                        
+                        // Parse Symmetrical Profile Packaging
+                        if (msg.senderId === this.mySessionId && msg.targetProfile) {
+                            contactProfile = msg.targetProfile;
+                        } else if (msg.targetContactId === this.mySessionId && msg.senderProfile) {
+                            contactProfile = msg.senderProfile;
+                        } else if (msg.senderId !== this.mySessionId && msg.senderProfile) {
+                            contactProfile = msg.senderProfile; // Fallback
+                        }
+
+                        if (contactProfile && contactProfile.name) {
+                            uniqueContacts[contactProfile.name] = {
+                                id: contactProfile.name, // Use Name as strict ID
+                                name: contactProfile.name,
+                                avatarUrl: contactProfile.avatarUrl || msg.avatarUrl || '',
+                                strand: contactProfile.strand || 'Student',
+                                bio: contactProfile.bio || '',
+                                subjects: contactProfile.subjects || [],
+                                hourlyRate: contactProfile.hourlyRate || 0,
+                                role: contactProfile.role || 'student'
                             };
                         }
                     });
@@ -552,18 +572,23 @@
 
                 get activeChatHistory() {
                     if (!this.activeContact) return [];
-                    // Filter messages to show only the conversation between me and the active contact
-                    return this.allMessages.filter(msg => 
-                        msg.senderId === this.activeContact.id || 
-                        (msg.senderId === this.mySessionId && msg.targetContactId === this.activeContact.id)
-                    );
+                    
+                    return this.allMessages.filter(msg => {
+                        // Check if the active contact is involved in this message either as sender or target
+                        const involvesContact = 
+                            msg.senderId === this.activeContact.name || 
+                            msg.targetContactId === this.activeContact.name ||
+                            msg.senderProfile?.name === this.activeContact.name ||
+                            msg.targetProfile?.name === this.activeContact.name;
+                            
+                        return involvesContact;
+                    });
                 },
 
-                // *** DUAL-VAULT SAVE (GUARANTEE DELIVERY FIX) ***
+                // *** FIX 4: THE DUAL-VAULT OUTBOX ***
                 sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
-                    // Package the Tutor's profile card to send back to the student
                     let myProfile = { 
                         name: this.profile.name, 
                         strand: this.profile.strand, 
@@ -575,12 +600,14 @@
 
                     const payload = { 
                         type: 'chat', 
-                        senderId: this.mySessionId, // My stable ID
-                        targetContactId: this.activeContact.id, // Mark who this is specifically for
+                        senderId: this.mySessionId, // My strict name
+                        targetContactId: this.activeContact.name, // Their strict name
                         senderName: this.profile.name, 
                         avatarUrl: this.finalAvatarUrl, 
-                        senderProfile: myProfile, // Attach the profile card!
-                        text: this.inboxMessage 
+                        senderProfile: myProfile, 
+                        targetProfile: this.activeContact, // Pass back so they know who replied
+                        text: this.inboxMessage,
+                        timestamp: Date.now()
                     };
 
                     // 1. Broadcast via live MQTT radio
@@ -592,8 +619,8 @@
                     tHist.push(payload);
                     localStorage.setItem(tKey, JSON.stringify(tHist));
 
-                    // 3. Write directly to Student's local memory vault (GUARANTEE DELIVERY)
-                    let sKey = 'studyio_student_inbox_history_' + this.activeContact.id;
+                    // 3. Write directly to Student's local memory vault (GUARANTEED DELIVERY)
+                    let sKey = 'studyio_student_inbox_history_' + this.activeContact.name;
                     let sHist = JSON.parse(localStorage.getItem(sKey) || '[]');
                     sHist.push(payload);
                     localStorage.setItem(sKey, JSON.stringify(sHist));

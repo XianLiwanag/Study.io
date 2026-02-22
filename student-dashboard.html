@@ -248,7 +248,9 @@
                 <div class="overflow-y-auto flex-1 chat-scroll p-2 space-y-1">
                     <template x-for="contact in contacts" :key="contact.id">
                         <button @click="selectContact(contact)" :class="activeContact?.id === contact.id ? 'bg-oxfordRed text-white shadow-md' : 'bg-transparent text-gray-800 hover:bg-gray-200'" class="w-full text-left p-3 rounded-lg transition flex items-center gap-3">
-                            <img :src="contact.avatarUrl" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
+                            
+                            <img :src="contact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random&color=fff&bold=true`" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
+                            
                             <div class="overflow-hidden flex-1">
                                 <div class="font-bold text-sm truncate" x-text="contact.name"></div>
                                 <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate">
@@ -274,7 +276,9 @@
                     <div class="flex flex-col h-full w-full">
                         <div class="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
                             <div class="flex items-start gap-4">
-                                <img :src="activeContact.avatarUrl" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
+                                
+                                <img :src="activeContact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeContact.name)}&background=random&color=fff&bold=true`" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
+                                
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
@@ -311,7 +315,9 @@
                                     
                                     <div x-show="msg.senderId !== mySessionId && !msg.isSystemAlert" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
-                                            <img :src="msg.senderProfile?.avatarUrl" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            
+                                            <img :src="msg.avatarUrl || msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'T')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            
                                             <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
@@ -436,17 +442,21 @@
                         };
 
                         // Ensure this tutor is added to our history so they show up in the contacts list
-                        const existingMessages = this.allMessages.filter(msg => msg.senderId === targetTutor.id || msg.targetContactId === targetTutor.id);
+                        const existingMessages = this.allMessages.filter(msg => 
+                            msg.senderId === targetTutor.name || 
+                            msg.targetContactId === targetTutor.name
+                        );
                         
                         if (existingMessages.length === 0) {
                             const connectionMsg = {
                                 type: 'chat',
-                                senderId: targetTutor.id, // Fake it coming from Tutor to align perfectly
+                                senderId: targetTutor.name, // Fake it coming from Tutor to align perfectly
                                 targetContactId: this.mySessionId, // Going to Student
                                 senderProfile: targetTutor, // Tutor Profile
                                 targetProfile: myProfile, // Student Profile
                                 text: `(System: You are now connected with ${targetTutor.name}. Send a message to start chatting!)`,
-                                isSystemAlert: true
+                                isSystemAlert: true,
+                                timestamp: Date.now()
                             };
                             
                             this.allMessages.push(connectionMsg);
@@ -458,8 +468,10 @@
                         this.rebuildContacts();
                         
                         setTimeout(() => {
-                            const contactToSelect = this.contacts.find(c => c.id === targetTutor.id);
-                            if (contactToSelect) this.selectContact(contactToSelect);
+                            const contactToSelect = this.contacts.find(c => c.id === targetTutor.name);
+                            if (contactToSelect) {
+                                this.selectContact(contactToSelect);
+                            }
                         }, 100);
 
                         // Erase the handoff so it doesn't happen again on refresh
@@ -502,18 +514,18 @@
                         
                         if (parsedMsg.type === 'chat') {
                             
-                            // *** FIX: PREVENT DOUBLE TEXTING ECHO ***
+                            // *** FIX 1: THE ANTI-ECHO RULE ***
                             if (parsedMsg.senderId === this.mySessionId) return;
                             
                             // Check if this message is actually for me
                             if (parsedMsg.targetContactId === this.mySessionId) {
-                                // Save incoming messages to history
+                                
                                 this.allMessages.push(parsedMsg);
                                 localStorage.setItem('studyio_student_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
                                 
                                 this.rebuildContacts();
                                 
-                                // *** ALPINE REACTIVITY FIX ***
+                                // *** FIX 2: FORCE ALPINE RE-RENDER ***
                                 this.allMessages = [...this.allMessages];
                                 
                                 this.scrollToBottom();
@@ -530,31 +542,33 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** INBOX LOGIC & SYMMETRICAL PROFILE PARSING ***
+                // *** FIX 3: DUPLICATE PROFILE MERGING ***
+                // Rebuild contacts using the exact Name as the dictionary key to merge duplicates perfectly
                 rebuildContacts() {
                     const uniqueContacts = {};
                     
                     this.allMessages.forEach(msg => {
                         let contactProfile = null;
                         
+                        // Parse Symmetrical Profile Packaging
                         if (msg.senderId === this.mySessionId && msg.targetProfile) {
-                            // I sent this message. The person I am talking to is the target.
                             contactProfile = msg.targetProfile;
                         } else if (msg.targetContactId === this.mySessionId && msg.senderProfile) {
-                            // I received this message. The person I am talking to is the sender.
                             contactProfile = msg.senderProfile;
+                        } else if (msg.senderId !== this.mySessionId && msg.senderProfile) {
+                            contactProfile = msg.senderProfile; // Fallback
                         }
 
                         if (contactProfile && contactProfile.name) {
                             uniqueContacts[contactProfile.name] = {
-                                id: contactProfile.name,
+                                id: contactProfile.name, // Use Name as strict ID
                                 name: contactProfile.name,
-                                avatarUrl: contactProfile.avatarUrl || '',
-                                strand: contactProfile.strand || 'Not Specified',
+                                avatarUrl: contactProfile.avatarUrl || msg.avatarUrl || '',
+                                strand: contactProfile.strand || 'Tutor',
                                 bio: contactProfile.bio || '',
                                 subjects: contactProfile.subjects || [],
                                 hourlyRate: contactProfile.hourlyRate || 0,
-                                role: contactProfile.role || 'user'
+                                role: contactProfile.role || 'tutor'
                             };
                         }
                     });
@@ -569,15 +583,20 @@
 
                 get activeChatHistory() {
                     if (!this.activeContact) return [];
-                    return this.allMessages.filter(msg => 
-                        msg.senderId === this.activeContact.id || 
-                        msg.senderProfile?.name === this.activeContact.name ||
-                        (msg.senderId === this.mySessionId && msg.targetContactId === this.activeContact.id) ||
-                        (msg.senderId === 'system_alert' && msg.senderProfile?.name === this.activeContact.name)
-                    );
+                    
+                    return this.allMessages.filter(msg => {
+                        // Check if the active contact is involved in this message either as sender or target
+                        const involvesContact = 
+                            msg.senderId === this.activeContact.name || 
+                            msg.targetContactId === this.activeContact.name ||
+                            msg.senderProfile?.name === this.activeContact.name ||
+                            msg.targetProfile?.name === this.activeContact.name;
+                            
+                        return involvesContact;
+                    });
                 },
 
-                // *** THE MASTER CHAT VAULT FIX ***
+                // *** FIX 4: THE DUAL-VAULT OUTBOX ***
                 sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
@@ -593,9 +612,11 @@
                     const payload = { 
                         type: 'chat', 
                         senderId: this.mySessionId, // STABLE ID
-                        targetContactId: this.activeContact.id, // Mark who this is for (The Tutor)
+                        targetContactId: this.activeContact.name, // Their strict name
+                        senderName: this.profile.name, 
+                        avatarUrl: this.finalAvatarUrl, 
                         senderProfile: myProfile, // Securely attach the Student Profile Card
-                        targetProfile: this.activeContact, // Pass the contact we are talking to
+                        targetProfile: this.activeContact, // Pass back so they know who replied
                         text: this.inboxMessage,
                         timestamp: Date.now()
                     };
@@ -611,7 +632,7 @@
                     localStorage.setItem(sKey, JSON.stringify(sHist));
 
                     // 3. Write directly to Tutor's local memory vault (GUARANTEE DELIVERY)
-                    let tKey = 'studyio_tutor_inbox_history_' + this.activeContact.id;
+                    let tKey = 'studyio_tutor_inbox_history_' + this.activeContact.name;
                     let tHist = JSON.parse(localStorage.getItem(tKey) || '[]');
                     tHist.push(payload);
                     localStorage.setItem(tKey, JSON.stringify(tHist));
