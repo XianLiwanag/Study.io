@@ -436,9 +436,12 @@
                     this.mqttClient.on('message', (topic, message) => {
                         if (topic === 'studyio/system/new_application') {
                             const newApp = JSON.parse(message.toString());
-                            this.applications.unshift(newApp);
-                            this.saveState(); 
-                            this.showToast(`New Application received from ${newApp.name}!`, 'success');
+                            // Ensure we aren't adding duplicates
+                            if(!this.applications.find(a => a.id === newApp.id)) {
+                                this.applications.unshift(newApp);
+                                this.saveState(); 
+                                this.showToast(`New Application received from ${newApp.name}!`, 'success');
+                            }
                         }
                     });
                 },

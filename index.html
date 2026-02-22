@@ -1126,11 +1126,12 @@
                 async logout() { 
                     this.currentUser = null; 
                     sessionStorage.clear(); // Destroy all session data
-                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Kill ghost tokens
+                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Kill the ghost token!
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.reload(); 
                 },
 
+                // *** FIX: SAVE APPLICATION TO ADMIN VAULT DIRECTLY ***
                 async submitRegistration() {
                     this.isSubmitting = true;
                     try {
@@ -1171,8 +1172,23 @@
                                 bio: this.regData.bio || "No bio provided."
                             };
                             
+                            // 1. Broadcast it live to Admin Dashboard
                             this.mqttClient.publish('studyio/system/new_application', JSON.stringify(newApplicant));
                             
+                            // 2. THIS IS THE FIX! Save it directly to Admin's local storage so it doesn't vanish
+                            let existingApps = localStorage.getItem('studyio_admin_apps');
+                            if (existingApps) {
+                                existingApps = JSON.parse(existingApps);
+                            } else {
+                                // Provide defaults just in case Admin Dashboard has never been opened
+                                existingApps = [
+                                    { id: 101, name: "Miguel Cruz", email: "miguel.cruz@gmail.com", strand: "Grade 12 - STEM", age: 18, contact: "+63 917 123 4567", hourlyRate: 150, subjects: ["General Chemistry 1", "Basic Calculus"], bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." },
+                                    { id: 102, name: "Isabella Reyes", email: "isa.reyes22@yahoo.com", strand: "Grade 12 - HUMSS", age: 17, contact: "+63 918 987 6543", hourlyRate: 120, subjects: ["Creative Writing", "Philippine Politics and Governance"], bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" }
+                                ];
+                            }
+                            existingApps.unshift(newApplicant);
+                            localStorage.setItem('studyio_admin_apps', JSON.stringify(existingApps));
+
                             this.myApplication = { ...newApplicant, status: 'Pending' }; 
                             sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
 
