@@ -385,7 +385,8 @@
     </main>
 
     <script>
-        // *** TAB ISOLATION FIX *** const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        // *** STRICT TAB ISOLATION ***
+        const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('studyio_tab_id', tabId);
 
         const supabaseClient = window.supabase.createClient(
@@ -460,14 +461,29 @@
                     const savedProfile = localStorage.getItem('studyio_tutor_profile');
                     if (savedProfile) { 
                         this.profile = JSON.parse(savedProfile); 
-                        if (!this.profile.avatarUrl && this.currentUser && this.currentUser.avatar) {
+                        
+                        // *** STRICT IDENTITY ALIGNMENT FIX ***
+                        // Detects if you logged into a new account and nukes the old ghost profile
+                        if (this.currentUser && this.profile.name !== this.currentUser.name) {
+                            this.profile.name = this.currentUser.name;
+                            this.profile.avatarUrl = this.currentUser.avatar || '';
+                            this.profile.subjects = []; 
+                            this.profile.bio = ""; 
+                            this.profile.schedule = []; 
+                            this.triggerSync();
+                        } else if (!this.profile.avatarUrl && this.currentUser && this.currentUser.avatar) {
                             this.profile.avatarUrl = this.currentUser.avatar;
                             this.triggerSync();
                         }
+                    } else if (this.currentUser) {
+                        this.profile.name = this.currentUser.name;
+                        if (this.currentUser.avatar) {
+                            this.profile.avatarUrl = this.currentUser.avatar;
+                        }
+                        this.triggerSync();
                     }
 
                     // *** ESTABLISH PERMANENT SESSION ID ***
-                    // We lock this strictly to the User's Name so refreshing the tab doesn't erase their history!
                     this.mySessionId = this.profile.name || (this.currentUser ? this.currentUser.name : 'Unknown_Tutor');
 
                     // LOAD INBOX HISTORY FROM MEMORY
@@ -477,7 +493,7 @@
                         this.rebuildContacts();
                     }
 
-                    // *** CROSS-TAB RADAR *** // Instantly updates the Tutor Inbox if a Student dropped a message into the vault
+                    // *** CROSS-TAB RADAR ***
                     window.addEventListener('storage', (e) => {
                         if (e.key === 'studyio_tutor_inbox_history_' + this.mySessionId) {
                             this.allMessages = JSON.parse(e.newValue || '[]');
@@ -494,7 +510,7 @@
                         }
                     });
 
-                    this.chatTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    this.chatTopic = 'studyio/room/' + this.mySessionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
                     
                     this.mqttClient.on('connect', () => {
@@ -506,8 +522,7 @@
                         
                         if (parsedMsg.type === 'chat') {
                             
-                            // *** FIX 1: THE ANTI-ECHO RULE ***
-                            // Prevent double texting when the network bounces our own message back to us
+                            // Prevent echo
                             if (parsedMsg.senderId === this.mySessionId) return;
 
                             this.allMessages.push(parsedMsg);
@@ -515,7 +530,6 @@
                             
                             this.rebuildContacts();
                             
-                            // *** FIX 2: FORCE ALPINE RE-RENDER ***
                             this.allMessages = [...this.allMessages];
                             
                             this.scrollToBottom();
@@ -523,15 +537,19 @@
                     });
                 },
 
+                // SWEEPER FOR STICKY LOGIN BUG
                 async logout() {
                     this.currentUser = null;
                     sessionStorage.clear();
+                    
+                    localStorage.removeItem('studyio_student_profile');
+                    localStorage.removeItem('studyio_tutor_profile');
+                    
                     localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token');
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** FIX 3: DUPLICATE PROFILE MERGING ***
                 // Rebuild contacts using the exact Name as the dictionary key to merge duplicates perfectly
                 rebuildContacts() {
                     const uniqueContacts = {};
@@ -574,7 +592,6 @@
                     if (!this.activeContact) return [];
                     
                     return this.allMessages.filter(msg => {
-                        // Check if the active contact is involved in this message either as sender or target
                         const involvesContact = 
                             msg.senderId === this.activeContact.name || 
                             msg.targetContactId === this.activeContact.name ||
@@ -585,7 +602,7 @@
                     });
                 },
 
-                // *** FIX 4: THE DUAL-VAULT OUTBOX ***
+                // *** THE DUAL-VAULT OUTBOX ***
                 sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
