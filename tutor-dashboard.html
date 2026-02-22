@@ -444,7 +444,6 @@
                         this.currentUser = JSON.parse(savedSession); 
                     }
 
-                    // *** THE ACCOUNT-SCOPED STORAGE FIX ***
                     if (this.currentUser && this.currentUser.email) {
                         const profileKey = 'studyio_tutor_profile_' + this.currentUser.email;
                         const savedProfile = localStorage.getItem(profileKey);
@@ -495,7 +494,13 @@
                         const parsedMsg = JSON.parse(message.toString());
                         
                         if (parsedMsg.type === 'chat') {
+                            
+                            // 1. Prevent Echo (My own messages)
                             if (parsedMsg.senderId === this.mySessionId) return;
+
+                            // 2. *** FIX: THE ANTI-DUPLICATE RULE RESTORED ***
+                            const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
+                            if (isDuplicate) return;
 
                             this.allMessages.push(parsedMsg);
                             localStorage.setItem('studyio_tutor_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
@@ -721,7 +726,6 @@
                     return groups;
                 },
 
-                // *** SCOPED PROFILE SAVER ***
                 triggerSync() {
                     if (this.currentUser && this.currentUser.email) {
                         localStorage.setItem('studyio_tutor_profile_' + this.currentUser.email, JSON.stringify(this.profile));

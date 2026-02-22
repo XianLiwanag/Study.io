@@ -274,12 +274,11 @@
                     <div class="flex flex-col h-full w-full">
                         <div class="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
                             <div class="flex items-start gap-4">
-                                
                                 <img :src="activeContact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeContact.name)}&background=random&color=fff&bold=true`" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
-                                
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
+                                        
                                         <div class="text-right flex-shrink-0 ml-2" x-show="activeContact.role === 'tutor'">
                                             <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Rate</span><br>
                                             <span class="text-sm font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">₱<span x-text="activeContact.hourlyRate || '0'"></span>/hr</span>
@@ -384,7 +383,6 @@
                         this.currentUser = JSON.parse(savedSession); 
                     }
 
-                    // *** THE ACCOUNT-SCOPED STORAGE FIX ***
                     if (this.currentUser && this.currentUser.email) {
                         const profileKey = 'studyio_student_profile_' + this.currentUser.email;
                         const savedProfile = localStorage.getItem(profileKey);
@@ -478,7 +476,13 @@
                         const parsedMsg = JSON.parse(message.toString());
                         
                         if (parsedMsg.type === 'chat') {
+                            
+                            // 1. Prevent Echo (My own messages)
                             if (parsedMsg.senderId === this.mySessionId) return;
+                            
+                            // 2. *** FIX: THE ANTI-DUPLICATE RULE RESTORED ***
+                            const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
+                            if (isDuplicate) return;
                             
                             if (parsedMsg.targetContactId === this.mySessionId) {
                                 this.allMessages.push(parsedMsg);
@@ -707,7 +711,6 @@
                     return groups;
                 },
 
-                // *** SCOPED PROFILE SAVER ***
                 saveProfile() {
                     if(this.currentUser && this.currentUser.email) {
                         localStorage.setItem('studyio_student_profile_' + this.currentUser.email, JSON.stringify(this.profile));
