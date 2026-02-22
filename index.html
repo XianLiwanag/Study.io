@@ -172,17 +172,64 @@
                 <button @click="scrollTo('tutors')" class="bg-white text-oxfordRed px-8 py-3 md:py-4 rounded-full font-bold hover:bg-gray-100 transition shadow-xl w-full sm:w-auto">Find a Tutor Now</button>
             </div>
             
-            <div class="md:w-1/2 w-full mt-12 md:mt-0 flex flex-col sm:flex-row justify-center gap-4 sm:gap-6">
-                <div class="bg-white text-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl transform md:translate-y-4 flex-1 sm:flex-none">
-                    <div class="text-oxfordRed text-3xl md:text-4xl font-bold mb-1">250+</div>
-                    <div class="text-xs md:text-sm font-medium text-gray-500 uppercase tracking-wide">Active Tutors</div>
+            <div class="md:w-1/2 w-full mt-12 md:mt-0 grid grid-cols-2 gap-4 sm:gap-6 relative z-10">
+                
+                <div class="absolute -top-6 -right-6 text-yellow-400 opacity-50 animate-pulse hidden md:block z-0">
+                    <i class="fa-solid fa-sparkles text-4xl"></i>
                 </div>
-                <div class="bg-white text-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl transform md:-translate-y-4 flex-1 sm:flex-none">
-                    <div class="text-oxfordRed text-3xl md:text-4xl font-bold mb-1">99.7%</div>
-                    <div class="text-xs md:text-sm font-medium text-gray-500 uppercase tracking-wide">Pass Rate</div>
+
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-oxfordRed relative overflow-hidden group hover:-translate-y-2 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-red-50 transition-colors z-0">
+                        <i class="fa-solid fa-chalkboard-user text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="text-oxfordRed text-3xl md:text-4xl font-bold mb-1 relative z-10">250+</div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Active Tutors</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">Ready to help you succeed.</div>
+                </div>
+                
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:-translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-green-500 relative overflow-hidden group hover:-translate-y-6 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-green-50 transition-colors z-0">
+                        <i class="fa-solid fa-chart-line text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="text-green-600 text-3xl md:text-4xl font-bold mb-1 relative z-10">99.7%</div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Pass Rate</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">Proven academic excellence.</div>
+                </div>
+
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-blue-500 relative overflow-hidden group hover:-translate-y-2 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-blue-50 transition-colors z-0">
+                        <i class="fa-solid fa-clock-rotate-left text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="text-blue-600 text-3xl md:text-4xl font-bold mb-1 relative z-10">10k+</div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Hours Taught</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">Dedicated peer learning.</div>
+                </div>
+
+                <div class="bg-white text-gray-800 p-5 md:p-8 rounded-2xl shadow-2xl transform md:-translate-y-4 flex flex-col items-center sm:items-start text-center sm:text-left border-t-4 border-yellow-400 relative overflow-hidden group hover:-translate-y-6 transition-all duration-300">
+                    <div class="absolute -right-4 -top-4 text-gray-100 group-hover:text-yellow-50 transition-colors z-0">
+                        <i class="fa-solid fa-star text-6xl md:text-8xl"></i>
+                    </div>
+                    <div class="flex items-center gap-1 mb-1 relative z-10">
+                        <div class="text-yellow-500 text-3xl md:text-4xl font-bold">4.9</div>
+                        <div class="text-yellow-400 text-sm flex flex-col -space-y-1.5 mt-1 hidden sm:flex">
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                    </div>
+                    <div class="text-[10px] md:text-sm font-bold text-gray-800 uppercase tracking-wide relative z-10">Average Rating</div>
+                    <div class="text-[9px] md:text-xs text-gray-500 mt-2 relative z-10 font-medium">From verified students.</div>
+                </div>
+                
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 text-white px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-3 z-20 border border-gray-700 animate-bounce hidden md:flex">
+                    <div class="flex -space-x-2">
+                        <img class="w-7 h-7 rounded-full border border-gray-800 bg-white" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="">
+                        <img class="w-7 h-7 rounded-full border border-gray-800 bg-white" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" alt="">
+                        <img class="w-7 h-7 rounded-full border border-gray-800 bg-white" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nala" alt="">
+                    </div>
+                    <span class="text-xs font-bold tracking-wider uppercase">Join 5,000+ Users</span>
                 </div>
             </div>
-        </div>
+            </div>
     </header>
 
     <main id="tutors" class="max-w-7xl mx-auto px-4 py-12 md:py-16 flex flex-col md:flex-row gap-8 min-h-[80vh]">
@@ -814,6 +861,11 @@
                     if (window.location.search.includes('logged_out=1')) {
                         sessionStorage.clear(); 
                         localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
+                        
+                        // SWEEPER FOR STICKY LOGIN BUG!
+                        localStorage.removeItem('studyio_student_profile');
+                        localStorage.removeItem('studyio_tutor_profile');
+                        
                         window.history.replaceState({}, document.title, window.location.pathname);
                         this.currentUser = null;
                         supabaseClient.auth.signOut().catch(()=>{}); 
@@ -1129,9 +1181,14 @@
                     }, 800);
                 },
 
+                // SWEEPER FOR STICKY LOGIN BUG ADDED HERE
                 async logout() { 
                     this.currentUser = null; 
                     sessionStorage.clear(); 
+                    
+                    localStorage.removeItem('studyio_student_profile');
+                    localStorage.removeItem('studyio_tutor_profile');
+                    
                     localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.reload(); 
