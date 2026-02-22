@@ -54,7 +54,7 @@
             
             <div class="flex items-center gap-3 sm:gap-6">
                 <span class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full bg-green-900 text-green-400 border border-green-700 animate-pulse hidden md:inline-flex items-center">
-                    <i class="fa-solid fa-satellite-dish mr-1"></i> Live Cloud Sync
+                    <i class="fa-solid fa-satellite-dish mr-1"></i> Live Network Sync
                 </span>
                 
                 <div class="h-6 w-px bg-gray-700 mx-1 sm:mx-2 hidden md:block"></div>
@@ -81,6 +81,9 @@
         <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+                <button @click="resetDemo()" class="text-xs text-gray-400 hover:text-oxfordRed underline transition bg-gray-50 px-3 py-1.5 rounded-md sm:bg-transparent sm:px-0 sm:py-0 border border-gray-200 sm:border-0">
+                    <i class="fa-solid fa-rotate-left mr-1 sm:hidden"></i> Reset Demo Data
+                </button>
             </div>
             
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
@@ -89,7 +92,7 @@
                         <i class="fa-solid fa-users"></i>
                     </div>
                     <div>
-                        <div class="text-xl sm:text-2xl font-bold text-gray-800">Live</div>
+                        <div class="text-xl sm:text-2xl font-bold text-gray-800">5,241</div>
                         <div class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Total Students</div>
                     </div>
                 </div>
@@ -120,11 +123,11 @@
                 
                 <div class="bg-gray-50 border border-gray-200 p-4 sm:p-5 rounded-xl shadow-sm flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4">
                     <div class="bg-purple-100 text-purple-700 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
-                        <i class="fa-solid fa-cloud"></i>
+                        <i class="fa-solid fa-wallet"></i>
                     </div>
                     <div>
-                        <div class="text-xl sm:text-2xl font-bold text-gray-800">Sync</div>
-                        <div class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Database</div>
+                        <div class="text-xl sm:text-2xl font-bold text-gray-800">₱0</div>
+                        <div class="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold">Platform Fees</div>
                     </div>
                 </div>
             </div>
@@ -145,11 +148,8 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             
             <div x-show="activeTab === 'pending'">
-                <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50">
                     <h3 class="font-bold text-base sm:text-lg text-gray-800">Awaiting Approval</h3>
-                    <button @click="fetchData()" class="text-xs text-oxfordRed hover:text-oxfordDark transition flex items-center gap-1 font-bold">
-                        <i class="fa-solid fa-rotate"></i> Refresh List
-                    </button>
                 </div>
                 
                 <div class="overflow-x-auto table-scroll">
@@ -195,7 +195,7 @@
                                 <td colspan="4" class="px-4 sm:px-6 py-12 text-center text-gray-500">
                                     <div class="text-3xl sm:text-4xl mb-3 text-gray-300"><i class="fa-solid fa-check-circle"></i></div>
                                     <p class="text-base sm:text-lg font-medium text-gray-800">All caught up!</p>
-                                    <p class="text-xs sm:text-sm mt-1">There are no pending tutor applications in the database.</p>
+                                    <p class="text-xs sm:text-sm mt-1">There are no pending tutor applications right now.</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -353,7 +353,7 @@
             { 
                 auth: { 
                     storage: window.sessionStorage,
-                    storageKey: 'studyio_auth_' + tabId 
+                    storageKey: 'studyio_auth_' + tabId // Absolute Tab Lockdown
                 } 
             }
         );
@@ -370,8 +370,44 @@
                 applications: [],
                 activeTutors: [],
 
+                defaultApplications: [
+                    { 
+                        id: 101, 
+                        name: "Miguel Cruz", 
+                        email: "miguel.cruz@gmail.com", 
+                        strand: "Grade 12 - STEM", 
+                        age: 18, 
+                        contact: "+63 917 123 4567", 
+                        hourlyRate: 150, 
+                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                        bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
+                    },
+                    { 
+                        id: 102, 
+                        name: "Isabella Reyes", 
+                        email: "isa.reyes22@yahoo.com", 
+                        strand: "Grade 12 - HUMSS", 
+                        age: 17, 
+                        contact: "+63 918 987 6543", 
+                        hourlyRate: 120, 
+                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                        bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
+                    }
+                ],
+                defaultTutors: [
+                    { id: 1, name: "Janella Manansala", strand: "Grade 12 - STEM", hourlyRate: 200 },
+                    { id: 2, name: "Xian Liwanag", strand: "Grade 12 - STEM", hourlyRate: 150 },
+                    { id: 3, name: "Anjela Magcalas", strand: "Grade 12 - STEM", hourlyRate: 250 },
+                    { id: 4, name: "Jasmaine Magcalas", strand: "Grade 12 - STEM", hourlyRate: 180 },
+                    { id: 5, name: "Cedric Santos", strand: "Grade 12 - ABM", hourlyRate: 180 },
+                    { id: 6, name: "Johann Hernandez", strand: "Grade 12 - STEM", hourlyRate: 200 },
+                    { id: 7, name: "Kyle Ikan", strand: "Grade 11 - STEM", hourlyRate: 150 },
+                    { id: 8, name: "Akon Mariano", strand: "Grade 12 - STEM", hourlyRate: 150 },
+                    { id: 9, name: "Ace Magno", strand: "Grade 12 - STEM", hourlyRate: 100 }
+                ],
+
                 init() {
-                    // *** ADMIN SECURITY LOCKDOWN ***
+                    // *** ADMIN SECURITY LOCKDOWN (Tab Isolated) ***
                     const savedSession = sessionStorage.getItem('studyio_current_user');
                     
                     if (savedSession) { 
@@ -395,10 +431,23 @@
                         }
                     });
 
-                    // PULL FROM LIVE SUPABASE DATABASE
-                    this.fetchData();
+                    // Database mock objects stay in localStorage so they sync across tabs!
+                    const savedApps = localStorage.getItem('studyio_admin_apps');
+                    const savedTutors = localStorage.getItem('studyio_admin_tutors');
+                    
+                    if(savedApps) { 
+                        this.applications = JSON.parse(savedApps); 
+                    } else { 
+                        this.applications = [...this.defaultApplications]; 
+                    }
+                    
+                    if(savedTutors) { 
+                        this.activeTutors = JSON.parse(savedTutors); 
+                    } else { 
+                        this.activeTutors = [...this.defaultTutors]; 
+                    }
 
-                    // Connect to MQTT for Live Alerts
+                    // Connect to MQTT
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
                     
                     this.mqttClient.on('connect', () => { 
@@ -407,9 +456,14 @@
 
                     this.mqttClient.on('message', (topic, message) => {
                         if (topic === 'studyio/system/new_application') {
-                            // Instead of trusting the payload, we ask the DB for the newest official list
-                            this.fetchData();
-                            this.showToast(`New Application received! Updating list...`, 'success');
+                            const newApp = JSON.parse(message.toString());
+                            
+                            // Ensure we aren't adding duplicates
+                            if(!this.applications.find(a => a.id === newApp.id)) {
+                                this.applications.unshift(newApp);
+                                this.saveState(); 
+                                this.showToast(`New Application received from ${newApp.name}!`, 'success');
+                            }
                         }
                     });
                 },
@@ -423,40 +477,17 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** DATABASE FETCH PROTOCOL ***
-                async fetchData() {
-                    try {
-                        // 1. Fetch Pending Applications
-                        const { data: apps, error: appError } = await supabaseClient
-                            .from('applications')
-                            .select('*')
-                            .eq('status', 'Pending');
-                        
-                        if (!appError && apps) {
-                            // Map the snake_case from DB back to camelCase for the UI
-                            this.applications = apps.map(a => ({
-                                ...a,
-                                hourlyRate: a.hourly_rate 
-                            }));
-                        }
+                saveState() {
+                    localStorage.setItem('studyio_admin_apps', JSON.stringify(this.applications));
+                    localStorage.setItem('studyio_admin_tutors', JSON.stringify(this.activeTutors));
+                },
 
-                        // 2. Fetch Active Tutors from Profiles Table
-                        const { data: tutors, error: tutorError } = await supabaseClient
-                            .from('profiles')
-                            .select('*')
-                            .eq('is_active_tutor', true);
-
-                        if (!tutorError && tutors) {
-                            this.activeTutors = tutors.map(t => ({
-                                id: t.id,
-                                name: t.name,
-                                strand: t.strand,
-                                hourlyRate: t.hourly_rate
-                            }));
-                        }
-                    } catch (err) {
-                        console.error("Error fetching data:", err);
-                        this.showToast("Failed to fetch data from cloud.", "error");
+                resetDemo() {
+                    if(confirm("This will restore the original demo applicants and tutors. Proceed?")) {
+                        this.applications = [...this.defaultApplications];
+                        this.activeTutors = [...this.defaultTutors];
+                        this.saveState();
+                        this.showToast("Demo data has been reset.", "success");
                     }
                 },
 
@@ -465,92 +496,62 @@
                     this.isReviewOpen = true; 
                 },
 
-                // *** OFFICIAL DATABASE APPROVAL ENGINE ***
-                async approveApplicant(id) {
-                    const app = this.applications.find(a => a.id === id);
-                    if(!app) return;
-
-                    try {
-                        // 1. Update Application Status to Approved
-                        await supabaseClient
-                            .from('applications')
-                            .update({ status: 'Approved' })
-                            .eq('id', app.id);
-
-                        // 2. Upgrade the User's Profile to an Active Tutor
-                        await supabaseClient
-                            .from('profiles')
-                            .update({
-                                is_active_tutor: true,
-                                strand: app.strand,
-                                bio: app.bio,
-                                hourly_rate: app.hourlyRate || app.hourly_rate,
-                                subjects: app.subjects
-                            })
-                            .eq('id', app.user_id);
-
+                approveApplicant(id) {
+                    const applicant = this.applications.find(a => a.id === id);
+                    
+                    if(applicant) {
+                        this.applications = this.applications.filter(a => a.id !== id);
                         this.isReviewOpen = false;
-                        this.showToast(`Approved ${app.name}. Added to live website!`, 'success');
                         
-                        // 3. Broadcast to Home Page Grids
+                        this.activeTutors.unshift({
+                            id: applicant.id,
+                            name: applicant.name,
+                            strand: applicant.strand,
+                            hourlyRate: applicant.hourlyRate
+                        });
+
+                        this.saveState(); 
+                        this.showToast(`Approved ${applicant.name}. Added to live website!`, 'success');
+                        
                         const payload = {
                             type: 'new_tutor_approved',
-                            tutor: { 
-                                id: app.user_id, 
-                                name: app.name, 
-                                strand: app.strand, 
-                                hourlyRate: app.hourlyRate || app.hourly_rate 
+                            tutor: {
+                                id: applicant.id,
+                                name: applicant.name,
+                                strand: applicant.strand,
+                                bio: applicant.bio,
+                                subjects: applicant.subjects,
+                                schedule: [{ day: "To Be Announced", time: "TBA" }], 
+                                hourlyRate: applicant.hourlyRate,
+                                headerColor: "bg-gray-800"
                             }
                         };
-                        this.mqttClient.publish('studyio/system/new_tutor_approved', JSON.stringify(payload), { retain: true });
                         
-                        // 4. Refresh internal lists
-                        this.fetchData();
-
-                    } catch (err) {
-                        this.showToast("Error approving tutor in database.", "error");
+                        this.mqttClient.publish('studyio/system/new_tutor_approved', JSON.stringify(payload), { retain: true });
                     }
                 },
 
-                // *** OFFICIAL DATABASE REJECTION ENGINE ***
-                async rejectApplicant(id) {
-                    const app = this.applications.find(a => a.id === id);
-                    if(!app) return;
-
-                    try {
-                        await supabaseClient
-                            .from('applications')
-                            .update({ status: 'Rejected' })
-                            .eq('id', app.id);
-
+                rejectApplicant(id) {
+                    const applicant = this.applications.find(a => a.id === id);
+                    
+                    if(applicant) {
+                        this.applications = this.applications.filter(a => a.id !== id);
                         this.isReviewOpen = false;
-                        this.showToast(`Application for ${app.name} was rejected.`, 'error');
-
-                        this.mqttClient.publish('studyio/system/application_rejected', JSON.stringify({ id: app.user_id }), { retain: true });
-
-                        this.fetchData();
-                    } catch (err) {
-                        this.showToast("Error rejecting tutor.", "error");
+                        
+                        this.saveState(); 
+                        this.showToast(`Application for ${applicant.name} was rejected.`, 'error');
+                        
+                        this.mqttClient.publish('studyio/system/application_rejected', JSON.stringify({ id: id }), { retain: true });
                     }
                 },
 
-                // *** OFFICIAL DATABASE REMOVAL ENGINE ***
-                async deleteTutor(userId) {
+                deleteTutor(id) {
                     if(confirm("Are you sure you want to permanently remove this tutor from the platform?")) {
-                        try {
-                            // Demote the profile back to a normal user
-                            await supabaseClient
-                                .from('profiles')
-                                .update({ is_active_tutor: false })
-                                .eq('id', userId);
-                            
-                            this.mqttClient.publish('studyio/system/delete_tutor', JSON.stringify({ type: 'delete_tutor', id: userId }), { retain: true });
-                            this.showToast("Tutor successfully removed from platform.", "error");
-
-                            this.fetchData();
-                        } catch (err) {
-                            this.showToast("Error removing tutor.", "error");
-                        }
+                        this.activeTutors = this.activeTutors.filter(t => t.id !== id);
+                        this.saveState(); 
+                        
+                        this.mqttClient.publish('studyio/system/delete_tutor', JSON.stringify({ type: 'delete_tutor', id: id }), { retain: true });
+                        this.showToast("Tutor successfully removed from platform.", "error");
                     }
                 },
 

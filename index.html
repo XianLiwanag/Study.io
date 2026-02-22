@@ -776,30 +776,6 @@
             }
         );
 
-        // Fetch DB function
-        async function fetchTutorsFromDB() {
-            try {
-                const { data, error } = await supabaseClient.from('profiles').select('*').eq('is_active_tutor', true);
-                if (data && data.length > 0) {
-                    tutorsData = data.map(dbTutor => ({
-                        id: dbTutor.id,
-                        name: dbTutor.name,
-                        strand: dbTutor.strand,
-                        bio: dbTutor.bio,
-                        hourlyRate: dbTutor.hourly_rate,
-                        subjects: dbTutor.subjects || [],
-                        schedule: dbTutor.schedule || [],
-                        headerColor: dbTutor.header_color,
-                        avatarUrl: dbTutor.avatar_url,
-                        coverImageUrl: dbTutor.cover_image_url
-                    }));
-                }
-                handleFilters();
-            } catch (err) {
-                console.error("DB Fetch Error: ", err);
-            }
-        }
-
         function appData() {
             return {
                 // UI States
@@ -834,7 +810,7 @@
                 newTutorAlert: false, 
                 
                 init() {
-                    // *** 1. CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
+                    // *** CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
                     if (window.location.search.includes('logged_out=1')) {
                         sessionStorage.clear(); 
                         localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
@@ -843,50 +819,44 @@
                         supabaseClient.auth.signOut().catch(()=>{}); 
                     }
 
-                    // *** 2. LISTEN TO SUPABASE FOR SECURE OAUTH REDIRECTS ***
-                    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                    // *** LISTEN TO SUPABASE FOR SECURE OAUTH REDIRECTS ***
+                    supabaseClient.auth.onAuthStateChange((event, session) => {
                         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                            if (session && session.user) {
+                            if (session && session.user.app_metadata.provider === 'google') {
                                 const user = session.user;
+                                const fullName = user.user_metadata.full_name || user.email.split('@')[0];
+                                const avatar = user.user_metadata.avatar_url || '';
                                 
-                                // Fetch their official profile from the cloud
-                                const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
-                                
-                                if (profile) {
-                                    this.currentUser = { 
-                                        id: profile.id,
-                                        name: profile.name, 
-                                        email: profile.email, 
-                                        role: profile.role,
-                                        avatar: profile.avatar_url 
-                                    };
-                                } else if (user.app_metadata.provider === 'google') {
-                                    // It's a brand new Google user, insert them into the DB
-                                    const fullName = user.user_metadata.full_name || user.email.split('@')[0];
-                                    const avatar = user.user_metadata.avatar_url || '';
-                                    
-                                    const newProfile = {
-                                        id: user.id,
-                                        email: user.email,
-                                        name: fullName,
-                                        role: 'student',
-                                        avatar_url: avatar,
-                                        is_active_tutor: false
-                                    };
-                                    
-                                    await supabaseClient.from('profiles').insert([newProfile]);
-                                    
-                                    this.currentUser = {
-                                        id: user.id,
-                                        name: fullName,
-                                        email: user.email,
-                                        role: 'student',
-                                        avatar: avatar
-                                    };
-                                }
+                                // INJECT THE GOOGLE AVATAR INTO THE SESSION MEMORY
+                                this.currentUser = { 
+                                    name: fullName, 
+                                    email: user.email, 
+                                    role: 'student',
+                                    avatar: avatar 
+                                };
                                 
                                 sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
-                                this.checkApplicationStatus(user.id);
+                                
+                                // FORCE UPDATE LOCAL STORAGE SO THE DASHBOARD CAN SEE IT
+                                let existingProfile = localStorage.getItem('studyio_student_profile');
+                                if (!existingProfile) {
+                                    const blankStudentProfile = {
+                                        name: fullName, 
+                                        strand: "Grade 11", 
+                                        bio: "Ready to learn!", 
+                                        headerColor: "bg-gray-800", 
+                                        avatarUrl: avatar, 
+                                        coverImageUrl: "", 
+                                        subjects: []
+                                    };
+                                    localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                                } else {
+                                    let parsed = JSON.parse(existingProfile);
+                                    if(!parsed.avatarUrl && avatar) {
+                                        parsed.avatarUrl = avatar;
+                                        localStorage.setItem('studyio_student_profile', JSON.stringify(parsed));
+                                    }
+                                }
                                 this.updateIdentity();
                             }
                         } else if (event === 'SIGNED_OUT') {
@@ -896,14 +866,13 @@
                         }
                     });
 
-                    // *** 3. LOAD LOCAL MEMORY FOR FAST UI RENDER ***
+                    // *** LOAD MOCK MEMORY FOR MANUAL LOGINS ***
                     setTimeout(() => {
                         if (!this.currentUser) {
                             const savedSession = sessionStorage.getItem('studyio_current_user');
                             if (savedSession) { 
                                 this.currentUser = JSON.parse(savedSession); 
                                 this.updateIdentity();
-                                if(this.currentUser.id) this.checkApplicationStatus(this.currentUser.id);
                             }
                         }
                     }, 200);
@@ -912,6 +881,27 @@
                     window.addEventListener('require-login', () => {
                         alert("Please log in to message a tutor!");
                         this.loginModalOpen = true;
+                    });
+
+                    // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
+                    window.addEventListener('storage', () => this.updateIdentity());
+                    window.addEventListener('visibilitychange', () => {
+                        if (!document.hidden) {
+                            this.updateIdentity();
+                        }
+                    });
+
+                    // Check saved application tracker
+                    const savedApp = sessionStorage.getItem('studyio_my_application');
+                    if (savedApp) { 
+                        this.myApplication = JSON.parse(savedApp); 
+                    }
+
+                    // *** BACK-BUTTON CACHE FIX ***
+                    window.addEventListener('pageshow', (event) => {
+                        if (event.persisted && !sessionStorage.getItem('studyio_current_user')) { 
+                            window.location.reload(); 
+                        }
                     });
 
                     // Real-Time MQTT Connection (Only for Profile Updates and Applications now)
@@ -927,35 +917,101 @@
                     this.mqttClient.on('message', (topic, message) => {
                         const parsedMsg = JSON.parse(message.toString());
                         
-                        // Handle DB Refresh Triggers
-                        if (['profile_update', 'new_tutor_approved', 'delete_tutor'].includes(parsedMsg.type)) {
-                            fetchTutorsFromDB(); // Fetch fresh data from Supabase
+                        // Handle Profile Updates
+                        if (parsedMsg.type === 'profile_update') {
+                            const updatedProfile = parsedMsg.profile;
+                            const tutorIndex = tutorsData.findIndex(t => t.id === updatedProfile.id);
                             
-                            if (parsedMsg.type === 'new_tutor_approved') {
-                                this.newTutorAlert = true;
-                                setTimeout(() => { this.newTutorAlert = false; }, 4000);
-                                if (this.currentUser) this.checkApplicationStatus(this.currentUser.id);
+                            if (tutorIndex !== -1) {
+                                tutorsData[tutorIndex].name = updatedProfile.name; 
+                                tutorsData[tutorIndex].bio = updatedProfile.bio;
+                                tutorsData[tutorIndex].hourlyRate = updatedProfile.hourlyRate; 
+                                tutorsData[tutorIndex].strand = updatedProfile.strand;
+                                tutorsData[tutorIndex].headerColor = updatedProfile.headerColor; 
+                                tutorsData[tutorIndex].avatarUrl = updatedProfile.avatarUrl; 
+                                tutorsData[tutorIndex].coverImageUrl = updatedProfile.coverImageUrl; 
+                                
+                                tutorsData[tutorIndex].subjects = updatedProfile.subjects ? [...updatedProfile.subjects] : [];
+                                tutorsData[tutorIndex].schedule = updatedProfile.schedule ? [...updatedProfile.schedule] : [];
+                                
+                                syncDirectoryToStorage(); 
+                                handleFilters(); 
+                                
+                                if(selectedTutorId === updatedProfile.id) { 
+                                    openProfile(updatedProfile.id); 
+                                }
                             }
                         }
 
+                        // Handle New Tutors
+                        if (parsedMsg.type === 'new_tutor_approved') {
+                            const newTutor = parsedMsg.tutor;
+                            if(!tutorsData.find(t => t.id === newTutor.id)) {
+                                tutorsData.unshift(newTutor); 
+                                syncDirectoryToStorage(); 
+                                handleFilters(); 
+                                this.newTutorAlert = true;
+                                setTimeout(() => { this.newTutorAlert = false; }, 4000);
+                            }
+
+                            if (this.myApplication && this.myApplication.id === newTutor.id) {
+                                this.myApplication.status = 'Approved';
+                                sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                                
+                                const loggedInUser = { name: this.myApplication.name, email: this.myApplication.email, role: 'tutor' };
+                                sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
+                                this.currentUser = loggedInUser;
+                                
+                                // Build Profile
+                                const personalizedProfile = {
+                                    id: this.myApplication.id, 
+                                    name: this.myApplication.name, 
+                                    strand: this.myApplication.strand,
+                                    bio: this.myApplication.bio, 
+                                    hourlyRate: this.myApplication.hourlyRate,
+                                    headerColor: "bg-gray-800", 
+                                    avatarUrl: "", 
+                                    coverImageUrl: "",
+                                    subjects: this.myApplication.subjects || [],
+                                    schedule: [] 
+                                };
+                                localStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
+                                this.updateIdentity();
+                            }
+                        }
+
+                        // Handle Rejections
                         if (parsedMsg.type === 'application_rejected') {
-                            if (this.currentUser) this.checkApplicationStatus(this.currentUser.id);
+                            if (this.myApplication && this.myApplication.id === parsedMsg.id) {
+                                this.myApplication.status = 'Rejected';
+                                sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                            }
+                        }
+
+                        // Handle Deletions
+                        if (parsedMsg.type === 'delete_tutor') {
+                            const idToRemove = parsedMsg.id;
+                            const tutorIndex = tutorsData.findIndex(t => t.id === idToRemove);
+                            
+                            if (tutorIndex !== -1) {
+                                tutorsData.splice(tutorIndex, 1);
+                                syncDirectoryToStorage(); 
+                                handleFilters();
+                                if(selectedTutorId === idToRemove) { 
+                                    closeProfile(); 
+                                }
+                            }
+
+                            if (this.myApplication && this.myApplication.id === idToRemove) {
+                                this.myApplication.status = 'Rejected';
+                                sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                                
+                                if (this.currentUser && this.currentUser.email === this.myApplication.email) {
+                                    this.logout();
+                                }
+                            }
                         }
                     });
-                },
-
-                // *** FETCH APPLICATION FROM DB ***
-                async checkApplicationStatus(userId) {
-                    try {
-                        const { data } = await supabaseClient.from('applications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
-                        if (data) {
-                            this.myApplication = data;
-                        } else {
-                            this.myApplication = null;
-                        }
-                    } catch (e) {
-                        this.myApplication = null;
-                    }
                 },
 
                 // *** DYNAMIC IDENTITY RADAR ***
@@ -965,8 +1021,56 @@
                         this.navAvatar = '';
                         return;
                     }
-                    this.navName = this.currentUser.name;
-                    this.navAvatar = this.currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(this.currentUser.name)}&background=b91c1c&color=fff&bold=true`;
+
+                    let currentName = this.currentUser.name;
+                    let currentAvatar = this.currentUser.avatar || '';
+
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.name) currentName = p.name;
+                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.name) currentName = p.name;
+                        if (p && p.avatarUrl) currentAvatar = p.avatarUrl;
+                    }
+
+                    this.navName = currentName;
+                    this.navAvatar = currentAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentName)}&background=b91c1c&color=fff&bold=true`;
+                },
+
+                // HELPER: Fetch Avatar safely with Google fallback
+                getNavbarAvatar() {
+                    if (!this.currentUser) return '';
+                    
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.avatarUrl) return p.avatarUrl;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.avatarUrl) return p.avatarUrl;
+                    }
+                    
+                    if (this.currentUser.avatar) return this.currentUser.avatar;
+                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getNavbarName())}&background=b91c1c&color=fff&bold=true`;
+                },
+
+                // *** DYNAMIC NAME SYNC ***
+                getNavbarName() {
+                    if (!this.currentUser) return '';
+                    
+                    if (this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p && p.name) return p.name;
+                    } 
+                    else if (this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p && p.name) return p.name;
+                    }
+                    
+                    return this.currentUser.name;
                 },
 
                 // *** GOOGLE LOGIC WITH PROMPT FIX ***
@@ -987,66 +1091,42 @@
                     }
                 },
 
-                async submitLogin() {
+                submitLogin() {
                     this.isLoggingIn = true;
                     this.loginError = '';
                     
-                    const inputEmail = this.loginData.email.trim().toLowerCase();
-                    const inputPass = this.loginData.password.trim();
-
-                    // SMART DEMO ACCOUNT GENERATOR
-                    if (inputEmail === 'student@study.io' || inputEmail === 'admin@study.io') {
-                        const { data, error } = await supabaseClient.auth.signInWithPassword({ email: inputEmail, password: inputPass });
+                    setTimeout(() => {
+                        const registeredCreds = JSON.parse(localStorage.getItem('studyio_mock_credentials'));
+                        const inputEmail = this.loginData.email.trim().toLowerCase();
+                        const inputPass = this.loginData.password.trim();
                         
-                        if (error && error.message.includes('Invalid login credentials')) {
-                            // If it fails, it means the DB is empty. Let's auto-register them!
-                            const role = inputEmail.split('@')[0];
-                            const name = role === 'admin' ? 'Super Admin' : 'Demo Student';
-                            
-                            const res = await supabaseClient.auth.signUp({ email: inputEmail, password: inputPass });
-                            
-                            if (res.data?.user) {
-                                await supabaseClient.from('profiles').insert([{
-                                    id: res.data.user.id,
-                                    email: inputEmail,
-                                    name: name,
-                                    role: role,
-                                    is_active_tutor: false
-                                }]);
-                                // The onAuthStateChange listener will catch this and log them in
-                            } else {
-                                this.loginError = 'Error generating demo account.';
-                            }
-                            this.loginModalOpen = false;
-                            this.isLoggingIn = false;
-                            return;
+                        if (inputEmail === 'student@study.io' && inputPass === 'password123') {
+                            this.currentUser = { name: 'Demo Student', email: 'student@study.io', role: 'student' };
+                            this.loginModalOpen = false; 
+                            this.loginData = { email: '', password: '' }; 
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
+                        } 
+                        else if (inputEmail === 'admin@study.io' && inputPass === 'password123') {
+                            this.currentUser = { name: 'Super Admin', email: 'admin@study.io', role: 'admin' };
+                            this.loginModalOpen = false; 
+                            this.loginData = { email: '', password: '' }; 
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
+                        }
+                        else if (registeredCreds && inputEmail === registeredCreds.email.trim().toLowerCase() && inputPass === registeredCreds.password.trim()) {
+                            this.currentUser = { name: registeredCreds.name, email: registeredCreds.email, role: registeredCreds.role };
+                            this.loginModalOpen = false; 
+                            this.loginData = { email: '', password: '' };
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
+                            this.updateIdentity();
+                        } 
+                        else { 
+                            this.loginError = 'Invalid email or password. Please try again.'; 
                         }
                         
-                        if (error) {
-                            this.loginError = error.message;
-                            this.isLoggingIn = false;
-                            return;
-                        }
-                        
-                        // Success! Let onAuthStateChange handle the rest
-                        this.loginModalOpen = false;
                         this.isLoggingIn = false;
-                        return;
-                    }
-
-                    // NORMAL LOGIN
-                    const { error } = await supabaseClient.auth.signInWithPassword({
-                        email: inputEmail,
-                        password: inputPass
-                    });
-
-                    if (error) { 
-                        this.loginError = 'Invalid email or password. Please try again.'; 
-                    } else {
-                        this.loginModalOpen = false; 
-                    }
-                    
-                    this.isLoggingIn = false;
+                    }, 800);
                 },
 
                 async logout() { 
@@ -1066,45 +1146,88 @@
                             options: { 
                                 data: { 
                                     full_name: this.regData.fullName.trim(), 
-                                    role: this.modalType
+                                    role: this.modalType, 
+                                    age: this.regData.age, 
+                                    contact_number: this.regData.contactNumber, 
+                                    subjects: this.regData.subjects, 
+                                    bio: this.regData.bio 
                                 } 
                             } 
                         });
                         
                         if (error) throw error; 
                         
-                        const userId = data.user.id;
-
-                        // Insert into profiles
-                        await supabaseClient.from('profiles').insert([{
-                            id: userId,
-                            email: this.regData.email.trim(),
-                            name: this.regData.fullName.trim(),
-                            role: this.modalType,
-                            is_active_tutor: false
-                        }]);
+                        localStorage.setItem('studyio_mock_credentials', JSON.stringify({ 
+                            email: this.regData.email.trim(), 
+                            password: this.regData.password.trim(), 
+                            name: this.regData.fullName.trim(), 
+                            role: this.modalType 
+                        }));
                         
                         if(this.modalType === 'tutor') {
                             const newApplicant = {
-                                user_id: userId,
+                                id: Date.now(), 
                                 name: this.regData.fullName.trim(), 
                                 email: this.regData.email.trim(), 
                                 age: this.regData.age,
                                 contact: this.regData.contactNumber, 
                                 strand: this.regData.strand || "Unspecified Strand", 
-                                hourly_rate: this.regData.hourlyRate || 100, 
+                                hourlyRate: this.regData.hourlyRate || 100, 
                                 subjects: this.regData.subjects ? this.regData.subjects.split(',').map(s=>s.trim()) : [],
                                 bio: this.regData.bio || "No bio provided."
                             };
                             
-                            await supabaseClient.from('applications').insert([newApplicant]);
+                            this.mqttClient.publish('studyio/system/new_application', JSON.stringify(newApplicant));
                             
-                            // Ping Admin UI
-                            this.mqttClient.publish('studyio/system/new_application', JSON.stringify({type: 'ping'}));
+                            let existingApps = localStorage.getItem('studyio_admin_apps');
+                            if (existingApps) {
+                                existingApps = JSON.parse(existingApps);
+                            } else {
+                                existingApps = [
+                                    { 
+                                        id: 101, 
+                                        name: "Miguel Cruz", 
+                                        email: "miguel.cruz@gmail.com", 
+                                        strand: "Grade 12 - STEM", 
+                                        age: 18, 
+                                        contact: "+63 917 123 4567", 
+                                        hourlyRate: 150, 
+                                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                                        bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
+                                    },
+                                    { 
+                                        id: 102, 
+                                        name: "Isabella Reyes", 
+                                        email: "isa.reyes22@yahoo.com", 
+                                        strand: "Grade 12 - HUMSS", 
+                                        age: 17, 
+                                        contact: "+63 918 987 6543", 
+                                        hourlyRate: 120, 
+                                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                                        bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
+                                    }
+                                ];
+                            }
+                            existingApps.unshift(newApplicant);
+                            localStorage.setItem('studyio_admin_apps', JSON.stringify(existingApps));
 
-                            alert(`Application Sent! You can track your status using the new button in the navigation bar.`);
+                            this.myApplication = { ...newApplicant, status: 'Pending' }; 
+                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+
+                            alert(`Application Sent! You can track your status using the new button in the navigation bar. You can also Log In now!`);
                         } else { 
-                            alert(`Success! Welcome ${this.regData.fullName}.`); 
+                            const blankStudentProfile = {
+                                name: this.regData.fullName.trim(),
+                                strand: "Grade 11",
+                                bio: "Ready to learn!",
+                                headerColor: "bg-gray-800",
+                                avatarUrl: "", 
+                                coverImageUrl: "",
+                                subjects: this.regData.subjects ? this.regData.subjects.split(',').map(s=>s.trim()) : []
+                            };
+                            localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                            
+                            alert(`Success! Welcome ${this.regData.fullName}. You can now Log In!`); 
                         }
                         
                         this.modalOpen = false; 
@@ -1115,6 +1238,16 @@
                     } finally { 
                         this.isSubmitting = false; 
                     }
+                },
+
+                setupAndGoToDashboard() {
+                    // Logic left intentionally blank as UI handles navigation securely
+                },
+
+                clearApplication() { 
+                    this.myApplication = null; 
+                    sessionStorage.removeItem('studyio_my_application'); 
+                    this.statusModalOpen = false; 
                 },
 
                 openModal(type) { 
@@ -1133,7 +1266,184 @@
         //         VANILLA JS DIRECTORY LOGIC
         // ==========================================
 
-        let tutorsData = [];
+        let tutorsData = [
+            { 
+                id: 1, 
+                name: "Janella Manansala", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["General Physics 2", "Personal Development"], 
+                bio: "I specialize in General Physics and Calculus. I help students simplify complex formulas!", 
+                schedule: [
+                    { day: "Monday", time: "4:00 PM - 6:00 PM" }, 
+                    { day: "Saturday", time: "10:00 AM - 2:00 PM" }
+                ], 
+                hourlyRate: 200, 
+                headerColor: "bg-oxfordRed" 
+            },
+            { 
+                id: 2, 
+                name: "Xian Liwanag", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Understanding Culture, Society, and Politics", "Statistics and Probability"], 
+                bio: "Passionate about social sciences and numbers alike.", 
+                schedule: [
+                    { day: "Tuesday", time: "5:00 PM - 7:00 PM" }
+                ], 
+                hourlyRate: 150, 
+                headerColor: "bg-gray-800" 
+            },
+            { 
+                id: 3, 
+                name: "Anjela Magcalas", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Physical Education and Health", "General Biology 1", "General Biology 2"], 
+                bio: "Future doctor here! Let me help you with biology concepts.", 
+                schedule: [
+                    { day: "Monday", time: "6:00 PM - 8:00 PM" }
+                ], 
+                hourlyRate: 250, 
+                headerColor: "bg-blue-800" 
+            },
+            { 
+                id: 4, 
+                name: "Jasmaine Magcalas", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["21st Century Literature", "Entrepreneurship", "Business Math"], 
+                bio: "Business-minded and a bookworm.", 
+                schedule: [
+                    { day: "Wednesday", time: "3:00 PM - 5:00 PM" }
+                ], 
+                hourlyRate: 180, 
+                headerColor: "bg-emerald-800" 
+            },
+            { 
+                id: 5, 
+                name: "Cedric Santos", 
+                strand: "Grade 12 - ABM", 
+                subjects: ["Fundamentals of Accountancy, Business, & Math 1", "Fundamentals of Accountancy, Business, & Math 2", "Business Math"], 
+                bio: "Numbers tell a story. Let's make sure yours makes sense.", 
+                schedule: [
+                    { day: "Tuesday", time: "4:00 PM - 6:00 PM" }
+                ], 
+                hourlyRate: 180, 
+                headerColor: "bg-yellow-600", 
+                avatarUrl: "", 
+                coverImageUrl: "" 
+            },
+            { 
+                id: 6, 
+                name: "Johann Hernandez", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Introduction to the Philosophy of the Human Person", "General Biology 1", "General Biology 2"], 
+                bio: "Let's explore Philosophy and Biology together.", 
+                schedule: [
+                    { day: "Monday", time: "5:00 PM - 7:00 PM" }
+                ], 
+                hourlyRate: 200, 
+                headerColor: "bg-teal-700" 
+            },
+            { 
+                id: 7, 
+                name: "Kyle Ikan", 
+                strand: "Grade 11 - STEM", 
+                subjects: ["Statistics and Probability", "Basic Calculus"], 
+                bio: "Math doesn't have to be intimidating!", 
+                schedule: [
+                    { day: "Friday", time: "3:00 PM - 6:00 PM" }
+                ], 
+                hourlyRate: 150, 
+                headerColor: "bg-indigo-700" 
+            },
+            { 
+                id: 8, 
+                name: "Akon Mariano", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Computer System Servicing 12"], 
+                bio: "Ready to help you master Computer System Servicing 12 with practical tips and tricks!", 
+                schedule: [
+                    { day: "Wednesday", time: "4:00 PM - 6:00 PM" }, 
+                    { day: "Saturday", time: "1:00 PM - 3:00 PM" }
+                ], 
+                hourlyRate: 150, 
+                headerColor: "bg-blue-600" 
+            },
+            { 
+                id: 9, 
+                name: "Ace Magno", 
+                strand: "Grade 12 - STEM", 
+                subjects: ["Computer System Servicing 11"], 
+                bio: "I'll guide you through the basics of Computer System Servicing 11 so you can build a strong foundation.", 
+                schedule: [
+                    { day: "Tuesday", time: "5:00 PM - 7:00 PM" }, 
+                    { day: "Thursday", time: "5:00 PM - 7:00 PM" }
+                ], 
+                hourlyRate: 100, 
+                headerColor: "bg-green-600" 
+            }
+        ];
+
+        // *** MASTER SYNC VAULT FIX ***
+        function reconstructDatabase() {
+            let hasChanges = false;
+            const savedDirectory = localStorage.getItem('studyio_public_directory');
+            
+            if (savedDirectory) { 
+                tutorsData = JSON.parse(savedDirectory); 
+            }
+
+            const adminTutors = localStorage.getItem('studyio_admin_tutors');
+            if (adminTutors) {
+                const parsedAdmin = JSON.parse(adminTutors);
+                const originalLength = tutorsData.length;
+                
+                tutorsData = tutorsData.filter(t => parsedAdmin.some(at => at.id === t.id));
+                
+                if (tutorsData.length !== originalLength) {
+                    hasChanges = true; 
+                }
+
+                parsedAdmin.forEach(at => {
+                    if (!tutorsData.some(t => t.id === at.id)) {
+                        tutorsData.unshift({ 
+                            id: at.id, 
+                            name: at.name, 
+                            strand: at.strand, 
+                            hourlyRate: at.hourlyRate, 
+                            bio: "New tutor on the platform.", 
+                            subjects: [], 
+                            schedule: [], 
+                            headerColor: "bg-gray-800" 
+                        });
+                        hasChanges = true;
+                    }
+                });
+            }
+
+            const savedProfile = localStorage.getItem('studyio_tutor_profile');
+            if (savedProfile) {
+                const p = JSON.parse(savedProfile);
+                const index = tutorsData.findIndex(t => t.id === p.id);
+                if (index !== -1) {
+                    if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
+                        tutorsData[index] = { ...tutorsData[index], ...p }; 
+                        hasChanges = true; 
+                    }
+                } else { 
+                    tutorsData.unshift(p); 
+                    hasChanges = true; 
+                }
+            }
+
+            if (hasChanges) { 
+                localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData)); 
+            }
+        }
+
+        reconstructDatabase();
+        
+        function syncDirectoryToStorage() { 
+            localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData)); 
+        }
 
         const curriculumData = {
             "Grade 11": { 
@@ -1283,8 +1593,8 @@
             const gradeTerm = document.getElementById('grade-filter').value;
 
             const filtered = tutorsData.filter(t => {
-                const matchesSearch = t.name.toLowerCase().includes(searchTerm) || (t.subjects && t.subjects.some(sub => sub.toLowerCase().includes(searchTerm)));
-                const matchesSubject = subjectTerm === "" || (t.subjects && t.subjects.some(sub => sub.toLowerCase().includes(subjectTerm) || subjectTerm.includes(sub.toLowerCase())));
+                const matchesSearch = t.name.toLowerCase().includes(searchTerm) || t.subjects.some(sub => sub.toLowerCase().includes(searchTerm));
+                const matchesSubject = subjectTerm === "" || t.subjects.some(sub => sub.toLowerCase().includes(subjectTerm) || subjectTerm.includes(sub.toLowerCase()));
                 
                 let matchesGrade = true;
                 if (gradeTerm !== "") {
@@ -1297,7 +1607,7 @@
                         ...curriculumData[gradeTerm]["HE"]
                     ].map(s => s.toLowerCase());
                     
-                    matchesGrade = t.subjects && t.subjects.some(sub => allGradeSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
+                    matchesGrade = t.subjects.some(sub => allGradeSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
                 }
                 
                 let matchesStrand = true;
@@ -1309,7 +1619,7 @@
                         ...curriculumData["Grade 12"][strandTerm]
                     ].map(s => s.toLowerCase());
                     
-                    matchesStrand = t.subjects && t.subjects.some(sub => allStrandSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
+                    matchesStrand = t.subjects.some(sub => allStrandSubjects.includes(sub.toLowerCase()) || sub.toLowerCase().includes("21st century")); 
                 }
                 
                 return matchesSearch && matchesSubject && matchesGrade && matchesStrand;
@@ -1334,14 +1644,13 @@
             emptyState.style.display = 'none';
 
             tutors.forEach(tutor => {
-                const safeSubjects = tutor.subjects || [];
-                const subjectTags = safeSubjects.map(sub => `<span class="text-[10px] sm:text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">${sub}</span>`).join('');
+                const subjectTags = tutor.subjects.map(sub => `<span class="text-[10px] sm:text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">${sub}</span>`).join('');
                 const finalAvatar = tutor.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(tutor.name)}&background=random&color=fff&bold=true`;
                 const headerStyle = tutor.coverImageUrl ? `background-image: url('${tutor.coverImageUrl}'); background-size: cover; background-position: center;` : '';
                 const headerClass = tutor.coverImageUrl ? '' : tutor.headerColor;
 
                 grid.innerHTML += `
-                    <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition overflow-hidden border border-gray-100 flex flex-col group cursor-pointer sm:cursor-auto" onclick="if(window.innerWidth < 640) openProfile('${tutor.id}')">
+                    <div class="bg-white rounded-xl shadow-md hover:shadow-xl transition overflow-hidden border border-gray-100 flex flex-col group cursor-pointer sm:cursor-auto" onclick="if(window.innerWidth < 640) openProfile(${tutor.id})">
                         <div class="h-20 sm:h-24 ${headerClass} relative transition-all duration-300" style="${headerStyle}">
                             <div class="absolute -bottom-6 sm:-bottom-8 left-4 sm:left-6">
                                 <img src="${finalAvatar}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-white shadow-sm object-cover bg-white">
@@ -1361,7 +1670,7 @@
                             </div>
                             <div class="mt-4 sm:mt-6 pt-4 border-t border-gray-100 flex justify-between items-center pointer-events-auto">
                                 <span class="font-bold text-oxfordRed text-base sm:text-lg">₱${tutor.hourlyRate}<span class="text-xs sm:text-sm text-gray-500 font-normal">/hr</span></span>
-                                <button onclick="openProfile('${tutor.id}'); event.stopPropagation();" class="hidden sm:block bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-semibold hover:bg-gray-50 hover:text-oxfordRed hover:border-oxfordRed transition shadow-sm">
+                                <button onclick="openProfile(${tutor.id}); event.stopPropagation();" class="hidden sm:block bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-semibold hover:bg-gray-50 hover:text-oxfordRed hover:border-oxfordRed transition shadow-sm">
                                     View Profile
                                 </button>
                                 <span class="sm:hidden text-xs text-oxfordRed font-bold flex items-center gap-1">View <i class="fa-solid fa-arrow-right"></i></span>
@@ -1398,13 +1707,11 @@
             document.getElementById('modal-strand').innerHTML = `<i class="fa-solid fa-id-card text-oxfordRed mr-1"></i> ${tutor.strand}`; 
             document.getElementById('modal-bio').innerText = tutor.bio;
             
-            const safeSubjects = tutor.subjects || [];
-            document.getElementById('modal-subjects').innerHTML = safeSubjects.map(sub => 
+            document.getElementById('modal-subjects').innerHTML = tutor.subjects.map(sub => 
                 `<span class="text-xs md:text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full border border-gray-200 shadow-sm"><i class="fa-solid fa-check text-[10px] text-oxfordRed mr-1"></i> ${sub}</span>`
             ).join('');
             
-            const safeSchedule = tutor.schedule || [];
-            document.getElementById('modal-schedule').innerHTML = safeSchedule.map(slot => 
+            document.getElementById('modal-schedule').innerHTML = tutor.schedule.map(slot => 
                 `<li class="flex justify-between items-center text-xs md:text-sm border-b border-gray-100 pb-2 last:border-0 last:pb-0"><span class="font-medium text-gray-700">${slot.day}</span><span class="text-gray-600 bg-white px-2.5 py-1 rounded text-[10px] md:text-xs border border-gray-200 shadow-sm">${slot.time}</span></li>`
             ).join('');
             
@@ -1442,7 +1749,7 @@
                     avatarUrl: finalAvatar,
                     strand: tutor.strand,
                     bio: tutor.bio,
-                    subjects: tutor.subjects || [],
+                    subjects: tutor.subjects,
                     hourlyRate: tutor.hourlyRate,
                     role: 'tutor'
                 };
@@ -1476,9 +1783,8 @@
             handleFilters(); 
         });
         
-        // Initial Fetch from DB
         populateSubjectDropdown(); 
-        fetchTutorsFromDB();
+        renderTutors(tutorsData);
     </script>
 </body>
 </html>

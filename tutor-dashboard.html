@@ -54,7 +54,7 @@
             
             <div class="flex items-center gap-2 sm:gap-4">
                 <span class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full bg-green-100 text-green-700 animate-pulse border border-green-300 hidden md:inline-flex items-center">
-                    <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Cloud Synced
+                    <i class="fa-solid fa-wifi mr-1"></i> Live Sync Active
                 </span>
                 
                 <div class="h-6 sm:h-8 w-px bg-gray-300 mx-1 sm:mx-2 hidden sm:block"></div>
@@ -158,7 +158,7 @@
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6 border-b border-gray-100 pb-4 gap-2">
                     <div>
                         <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Edit Profile Settings</h2>
-                        <p class="text-xs sm:text-sm text-gray-500">Changes are instantly synced to the cloud and broadcasted to the main website.</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Changes are automatically saved and broadcasted to the main website in real-time.</p>
                     </div>
                     <div class="text-[10px] sm:text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 self-start sm:self-auto inline-flex items-center gap-1">
                         <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Auto-Saving
@@ -245,14 +245,11 @@
                             </select>
                             <button @click="addSubject()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Subject</button>
                         </div>
-                        
                         <div class="flex flex-wrap gap-2">
                             <template x-for="(sub, index) in profile.subjects" :key="index">
                                 <div class="bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-xs sm:text-sm flex items-center gap-2 sm:gap-3 shadow-sm">
                                     <span x-text="sub" class="font-medium"></span>
-                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1">
-                                        <i class="fa-solid fa-times"></i>
-                                    </button>
+                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1"><i class="fa-solid fa-times"></i></button>
                                 </div>
                             </template>
                         </div>
@@ -274,7 +271,6 @@
                             <input type="text" x-model="newScheduleTime" @keydown.enter.prevent="addSchedule()" placeholder="e.g., 4:00 PM - 6:00 PM" class="flex-1 border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm w-full">
                             <button @click="addSchedule()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Slot</button>
                         </div>
-                        
                         <div class="space-y-2">
                             <template x-for="(slot, index) in profile.schedule" :key="index">
                                 <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg shadow-sm">
@@ -282,9 +278,7 @@
                                         <span class="font-bold text-gray-800 text-xs sm:text-sm w-20 sm:w-24" x-text="slot.day"></span>
                                         <span class="text-gray-600 bg-white px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-sm border border-gray-200 shadow-sm" x-text="slot.time"></span>
                                     </div>
-                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition">
-                                        <i class="fa-solid fa-trash text-xs sm:text-sm"></i>
-                                    </button>
+                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition"><i class="fa-solid fa-trash text-xs sm:text-sm"></i></button>
                                 </div>
                             </template>
                         </div>
@@ -391,8 +385,7 @@
     </main>
 
     <script>
-        // *** STRICT TAB ISOLATION ***
-        const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        // *** TAB ISOLATION FIX *** const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('studyio_tab_id', tabId);
 
         const supabaseClient = window.supabase.createClient(
@@ -411,15 +404,22 @@
                 currentUser: null, 
                 activeTab: 'profile', // Default to Profile view
                 profile: {
-                    name: "", 
-                    strand: "Grade 12", 
-                    bio: "",
-                    hourlyRate: 0, 
-                    headerColor: "bg-gray-800", 
+                    id: 5, 
+                    name: "Cedric Santos", 
+                    strand: "Grade 12 - ABM", 
+                    bio: "Numbers tell a story. I can help you balance your sheets, understand accounting principles, and excel in Business Math.",
+                    hourlyRate: 180, 
+                    headerColor: "bg-yellow-600", 
                     avatarUrl: "", 
                     coverImageUrl: "",
-                    subjects: [], 
-                    schedule: []
+                    subjects: [
+                        "Fundamentals of Accountancy, Business, & Math 1", 
+                        "Fundamentals of Accountancy, Business, & Math 2", 
+                        "Business Math"
+                    ], 
+                    schedule: [
+                        { day: "Tuesday", time: "4:00 PM - 6:00 PM" }
+                    ]
                 },
                 
                 selectedSubjectToAdd: "", 
@@ -433,7 +433,7 @@
                 inboxMessage: '',
 
                 mqttClient: null, 
-                mySessionId: '', // Set dynamically based on Profile Name
+                mySessionId: '', // Set dynamically
                 chatTopic: null, 
                 syncTimer: null, 
 
@@ -452,116 +452,49 @@
                 ],
 
                 init() {
-                    // *** CLOUD AUTH AND PROFILE FETCHING ***
-                    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                            if (session && session.user) {
-                                const user = session.user;
-                                
-                                // Fetch their official profile from the cloud
-                                const { data: profileDB } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
-                                
-                                if (profileDB) {
-                                    this.currentUser = { 
-                                        id: user.id,
-                                        name: profileDB.name, 
-                                        email: profileDB.email, 
-                                        role: profileDB.role,
-                                        avatar: profileDB.avatar_url 
-                                    };
-                                    
-                                    // Populate UI
-                                    this.profile.name = profileDB.name || '';
-                                    this.profile.strand = profileDB.strand || '';
-                                    this.profile.bio = profileDB.bio || '';
-                                    this.profile.hourlyRate = profileDB.hourly_rate || 0;
-                                    this.profile.headerColor = profileDB.header_color || 'bg-gray-800';
-                                    this.profile.avatarUrl = profileDB.avatar_url || '';
-                                    this.profile.coverImageUrl = profileDB.cover_image_url || '';
-                                    this.profile.subjects = profileDB.subjects || [];
-                                    this.profile.schedule = profileDB.schedule || [];
-                                    
-                                    // *** ESTABLISH PERMANENT SESSION ID ***
-                                    // We lock this strictly to the User's Name so refreshing doesn't wipe history
-                                    this.mySessionId = this.profile.name;
-                                    
-                                    // Start listening to the network
-                                    this.connectToMQTT();
-                                    
-                                    // Fetch Cloud Inbox
-                                    this.loadMessagesFromCloud();
-                                }
-                            }
-                        } else if (event === 'SIGNED_OUT') {
-                            this.currentUser = null;
-                            window.location.href = 'index.html?logged_out=1';
-                        }
-                    });
+                    const savedSession = sessionStorage.getItem('studyio_current_user');
+                    if (savedSession) { 
+                        this.currentUser = JSON.parse(savedSession); 
+                    }
 
-                    // Protect page
-                    window.addEventListener('pageshow', (event) => {
-                        if (!sessionStorage.getItem('studyio_current_user')) {
-                            window.location.href = 'index.html'; 
+                    const savedProfile = localStorage.getItem('studyio_tutor_profile');
+                    if (savedProfile) { 
+                        this.profile = JSON.parse(savedProfile); 
+                        if (!this.profile.avatarUrl && this.currentUser && this.currentUser.avatar) {
+                            this.profile.avatarUrl = this.currentUser.avatar;
+                            this.triggerSync();
                         }
-                    });
-                },
+                    }
 
-                // *** FETCH MESSAGES DIRECTLY FROM THE SUPABASE CLOUD ***
-                async loadMessagesFromCloud() {
-                    if (!this.mySessionId) return;
-                    
-                    try {
-                        // Ask Supabase for any message where I am the sender OR the target
-                        const { data, error } = await supabaseClient
-                            .from('messages')
-                            .select('*')
-                            .or(`sender_id.eq.${this.mySessionId},target_id.eq.${this.mySessionId}`)
-                            .order('timestamp', { ascending: true });
-                        
-                        if (data && !error) {
-                            // Map Database rows back to UI format
-                            this.allMessages = data.map(dbMsg => ({
-                                senderId: dbMsg.sender_id,
-                                targetContactId: dbMsg.target_id,
-                                senderName: dbMsg.sender_name,
-                                text: dbMsg.text,
-                                senderProfile: dbMsg.sender_profile,
-                                targetProfile: dbMsg.target_profile,
-                                isSystemAlert: dbMsg.is_system_alert,
-                                timestamp: dbMsg.timestamp
-                            }));
-                            
+                    // *** ESTABLISH PERMANENT SESSION ID ***
+                    // We lock this strictly to the User's Name so refreshing the tab doesn't erase their history!
+                    this.mySessionId = this.profile.name || (this.currentUser ? this.currentUser.name : 'Unknown_Tutor');
+
+                    // LOAD INBOX HISTORY FROM MEMORY
+                    const savedMessages = localStorage.getItem('studyio_tutor_inbox_history_' + this.mySessionId);
+                    if (savedMessages) {
+                        this.allMessages = JSON.parse(savedMessages);
+                        this.rebuildContacts();
+                    }
+
+                    // *** CROSS-TAB RADAR *** // Instantly updates the Tutor Inbox if a Student dropped a message into the vault
+                    window.addEventListener('storage', (e) => {
+                        if (e.key === 'studyio_tutor_inbox_history_' + this.mySessionId) {
+                            this.allMessages = JSON.parse(e.newValue || '[]');
                             this.rebuildContacts();
                             this.scrollToBottom();
                         }
-                        
-                        // Check for handoff from the directory
-                        const pendingChat = localStorage.getItem('studyio_pending_chat_target');
-                        if (pendingChat) {
-                            const targetStudent = JSON.parse(pendingChat);
-                            
-                            // Switch to Inbox
-                            this.activeTab = 'inbox';
-                            
-                            setTimeout(() => {
-                                const contactToSelect = this.contacts.find(c => c.id === targetStudent.name);
-                                if (contactToSelect) {
-                                    this.selectContact(contactToSelect);
-                                }
-                            }, 100);
-                            
-                            localStorage.removeItem('studyio_pending_chat_target');
+                    });
+
+                    window.addEventListener('pageshow', (event) => {
+                        if (!sessionStorage.getItem('studyio_current_user')) {
+                            window.location.href = 'index.html'; 
+                        } else {
+                            this.currentUser = JSON.parse(sessionStorage.getItem('studyio_current_user'));
                         }
+                    });
 
-                    } catch(err) {
-                        console.error("Failed to load cloud messages:", err);
-                    }
-                },
-
-                connectToMQTT() {
-                    if(!this.mySessionId) return;
-                    
-                    this.chatTopic = 'studyio/room/' + this.mySessionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    this.chatTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
                     
                     this.mqttClient.on('connect', () => {
@@ -574,15 +507,17 @@
                         if (parsedMsg.type === 'chat') {
                             
                             // *** FIX 1: THE ANTI-ECHO RULE ***
+                            // Prevent double texting when the network bounces our own message back to us
                             if (parsedMsg.senderId === this.mySessionId) return;
-                            
-                            // *** FIX 2: THE ANTI-DUPLICATE RULE ***
-                            const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
-                            if (isDuplicate) return;
 
                             this.allMessages.push(parsedMsg);
+                            localStorage.setItem('studyio_tutor_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
+                            
                             this.rebuildContacts();
+                            
+                            // *** FIX 2: FORCE ALPINE RE-RENDER ***
                             this.allMessages = [...this.allMessages];
+                            
                             this.scrollToBottom();
                         }
                     });
@@ -597,6 +532,7 @@
                 },
 
                 // *** FIX 3: DUPLICATE PROFILE MERGING ***
+                // Rebuild contacts using the exact Name as the dictionary key to merge duplicates perfectly
                 rebuildContacts() {
                     const uniqueContacts = {};
                     
@@ -638,15 +574,19 @@
                     if (!this.activeContact) return [];
                     
                     return this.allMessages.filter(msg => {
-                        return msg.senderId === this.activeContact.name || 
-                               msg.targetContactId === this.activeContact.name ||
-                               msg.senderProfile?.name === this.activeContact.name ||
-                               msg.targetProfile?.name === this.activeContact.name;
+                        // Check if the active contact is involved in this message either as sender or target
+                        const involvesContact = 
+                            msg.senderId === this.activeContact.name || 
+                            msg.targetContactId === this.activeContact.name ||
+                            msg.senderProfile?.name === this.activeContact.name ||
+                            msg.targetProfile?.name === this.activeContact.name;
+                            
+                        return involvesContact;
                     });
                 },
 
-                // *** FIX 4: THE CLOUD OUTBOX ***
-                async sendInboxMessage() { 
+                // *** FIX 4: THE DUAL-VAULT OUTBOX ***
+                sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
                     let myProfile = { 
@@ -655,7 +595,6 @@
                         bio: this.profile.bio, 
                         subjects: this.profile.subjects, 
                         hourlyRate: this.profile.hourlyRate,
-                        avatarUrl: this.finalAvatarUrl,
                         role: "tutor" 
                     };
 
@@ -668,33 +607,27 @@
                         senderProfile: myProfile, 
                         targetProfile: this.activeContact, // Pass back so they know who replied
                         text: this.inboxMessage,
-                        timestamp: Date.now(),
-                        isSystemAlert: false
+                        timestamp: Date.now()
                     };
 
                     // 1. Broadcast via live MQTT radio
-                    const topic = 'studyio/room/' + this.activeContact.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                    this.mqttClient.publish(topic, JSON.stringify(payload)); 
+                    this.mqttClient.publish(this.chatTopic, JSON.stringify(payload)); 
                     
-                    // 2. Insert the message into the Supabase Cloud Vault
-                    try {
-                        await supabaseClient.from('messages').insert([{
-                            sender_id: payload.senderId,
-                            target_id: payload.targetContactId,
-                            sender_name: payload.senderName,
-                            text: payload.text,
-                            sender_profile: payload.senderProfile,
-                            target_profile: payload.targetProfile,
-                            is_system_alert: payload.isSystemAlert,
-                            timestamp: payload.timestamp
-                        }]);
-                    } catch(e) {
-                        console.error("Cloud send error:", e);
-                    }
+                    // 2. Write to Tutor's local memory vault
+                    let tKey = 'studyio_tutor_inbox_history_' + this.mySessionId;
+                    let tHist = JSON.parse(localStorage.getItem(tKey) || '[]');
+                    tHist.push(payload);
+                    localStorage.setItem(tKey, JSON.stringify(tHist));
 
-                    // 3. Update UI instantly
-                    this.allMessages.push(payload);
-                    this.allMessages = [...this.allMessages];
+                    // 3. Write directly to Student's local memory vault (GUARANTEED DELIVERY)
+                    let sKey = 'studyio_student_inbox_history_' + this.activeContact.name;
+                    let sHist = JSON.parse(localStorage.getItem(sKey) || '[]');
+                    sHist.push(payload);
+                    localStorage.setItem(sKey, JSON.stringify(sHist));
+
+                    // Update UI instantly
+                    this.allMessages = tHist;
+
                     this.inboxMessage = ''; 
                     this.scrollToBottom();
                 },
@@ -819,49 +752,27 @@
                     return groups;
                 },
 
-                // *** SYNC PROFILE UPDATES TO CLOUD ***
-                async triggerSync() {
-                    if(!this.currentUser || !this.currentUser.id) return;
+                triggerSync() {
+                    localStorage.setItem('studyio_tutor_profile', JSON.stringify(this.profile));
                     
                     clearTimeout(this.syncTimer);
                     
-                    this.syncTimer = setTimeout(async () => {
+                    this.syncTimer = setTimeout(() => {
+                        const cleanProfileToSync = JSON.parse(JSON.stringify(this.profile));
                         
-                        try {
-                            // Official Cloud Save
-                            await supabaseClient.from('profiles').update({
-                                name: this.profile.name,
-                                strand: this.profile.strand,
-                                bio: this.profile.bio,
-                                hourly_rate: this.profile.hourlyRate,
-                                header_color: this.profile.headerColor,
-                                avatar_url: this.profile.avatarUrl,
-                                cover_image_url: this.profile.coverImageUrl,
-                                subjects: this.profile.subjects,
-                                schedule: this.profile.schedule
-                            }).eq('id', this.currentUser.id);
-                            
-                            // Broadcast UI Ping so Home Page grids update
-                            const cleanProfileToSync = JSON.parse(JSON.stringify(this.profile));
-                            cleanProfileToSync.id = this.currentUser.id; // ensure ID is passed
-                            this.mqttClient.publish('studyio/system/profile_updates', JSON.stringify({ 
-                                type: 'profile_update', 
-                                profile: cleanProfileToSync 
-                            }), { retain: true });
-                            
-                        } catch(e) {
-                            console.error("Error saving profile to cloud", e);
-                        }
+                        this.mqttClient.publish('studyio/system/profile_updates', JSON.stringify({ 
+                            type: 'profile_update', 
+                            profile: cleanProfileToSync 
+                        }), { retain: true });
                         
-                        // Update Chat room listeners if name changed
                         const newTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                        if (newTopic !== this.chatTopic && this.mqttClient) {
+                        
+                        if (newTopic !== this.chatTopic) {
                             this.mqttClient.unsubscribe(this.chatTopic);
                             this.chatTopic = newTopic;
                             this.mqttClient.subscribe(this.chatTopic);
-                            this.mySessionId = this.profile.name;
                         }
-                    }, 800); // Small delay prevents hammering the database on every keystroke
+                    }, 500);
                 },
 
                 addSubject() { 
