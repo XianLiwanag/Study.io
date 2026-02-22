@@ -66,7 +66,7 @@
                 </a>
                 
                 <div class="flex items-center gap-2 text-gray-200">
-                    <div class="w-7 h-7 sm:w-8 h-8 rounded-full bg-oxfordRed flex items-center justify-center font-bold text-xs sm:text-sm shadow-inner">A</div>
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-oxfordRed flex items-center justify-center font-bold text-xs sm:text-sm shadow-inner">A</div>
                     <span class="font-medium text-sm hidden sm:inline" x-text="currentUser ? currentUser.name : 'Super Admin'"></span>
                 </div>
 
@@ -343,10 +343,11 @@
     </div>
 
     <script>
+        // Use SessionStorage to isolate tabs
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
-            { auth: { storage: window.sessionStorage } } // *** TAB ISOLATION ***
+            { auth: { storage: window.sessionStorage } }
         );
 
         function adminApp() {
@@ -361,28 +362,15 @@
                 applications: [],
                 activeTutors: [],
 
-                // Default Mock Data
                 defaultApplications: [
                     { 
-                        id: 101, 
-                        name: "Miguel Cruz", 
-                        email: "miguel.cruz@gmail.com", 
-                        strand: "Grade 12 - STEM", 
-                        age: 18, 
-                        contact: "+63 917 123 4567", 
-                        hourlyRate: 150, 
-                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                        id: 101, name: "Miguel Cruz", email: "miguel.cruz@gmail.com", strand: "Grade 12 - STEM", 
+                        age: 18, contact: "+63 917 123 4567", hourlyRate: 150, subjects: ["General Chemistry 1", "Basic Calculus"], 
                         bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
                     },
                     { 
-                        id: 102, 
-                        name: "Isabella Reyes", 
-                        email: "isa.reyes22@yahoo.com", 
-                        strand: "Grade 12 - HUMSS", 
-                        age: 17, 
-                        contact: "+63 918 987 6543", 
-                        hourlyRate: 120, 
-                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                        id: 102, name: "Isabella Reyes", email: "isa.reyes22@yahoo.com", strand: "Grade 12 - HUMSS", 
+                        age: 17, contact: "+63 918 987 6543", hourlyRate: 120, subjects: ["Creative Writing", "Philippine Politics and Governance"], 
                         bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
                     }
                 ],
@@ -399,7 +387,7 @@
                 ],
 
                 init() {
-                    // *** 1. CHECK SESSION STORAGE FIRST (Tab Isolated) ***
+                    // *** ADMIN SECURITY LOCKDOWN (Tab Isolated) ***
                     const savedSession = sessionStorage.getItem('studyio_current_user');
                     if (savedSession) { 
                         this.currentUser = JSON.parse(savedSession); 
@@ -455,10 +443,11 @@
                     });
                 },
 
-                // *** LOGOUT SECURELY CLEARS SESSION STORAGE ***
+                // *** LOGOUT SECURELY DESTROYS GHOST TOKENS ***
                 async logout() {
                     this.currentUser = null;
-                    sessionStorage.removeItem('studyio_current_user');
+                    sessionStorage.clear();
+                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Nuke command!
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.href = 'index.html?logged_out=1';
                 },

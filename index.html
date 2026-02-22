@@ -862,10 +862,10 @@
                 newTutorAlert: false, 
                 
                 init() {
-                    // *** 1. CATCH LOGOUT REDIRECT ***
+                    // *** 1. CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
                     if (window.location.search.includes('logged_out=1')) {
-                        sessionStorage.clear(); // Complete tab memory wipe
-                        localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Kill the ghost token!
+                        sessionStorage.clear(); 
+                        localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
                         window.history.replaceState({}, document.title, window.location.pathname);
                         this.currentUser = null;
                         supabaseClient.auth.signOut().catch(()=>{}); 
@@ -879,19 +879,30 @@
                                 const fullName = user.user_metadata.full_name || user.email.split('@')[0];
                                 const avatar = user.user_metadata.avatar_url || '';
                                 
+                                // INJECT THE GOOGLE AVATAR INTO THE SESSION MEMORY
                                 this.currentUser = { 
                                     name: fullName, 
                                     email: user.email, 
-                                    role: 'student' 
+                                    role: 'student',
+                                    avatar: avatar 
                                 };
                                 
                                 sessionStorage.setItem('studyio_current_user', JSON.stringify(this.currentUser));
                                 
-                                // Recreate profile for this specific Google user dynamically
-                                const studentProfile = {
-                                    name: fullName, strand: "Unspecified", bio: "Ready to learn!", headerColor: "bg-gray-800", avatarUrl: avatar, coverImageUrl: "", subjects: []
-                                };
-                                sessionStorage.setItem('studyio_student_profile', JSON.stringify(studentProfile));
+                                // FORCE UPDATE LOCAL STORAGE SO THE DASHBOARD CAN SEE IT
+                                let existingProfile = localStorage.getItem('studyio_student_profile');
+                                if (!existingProfile) {
+                                    const blankStudentProfile = {
+                                        name: fullName, strand: "Grade 11", bio: "Ready to learn!", headerColor: "bg-gray-800", avatarUrl: avatar, coverImageUrl: "", subjects: []
+                                    };
+                                    localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                                } else {
+                                    let parsed = JSON.parse(existingProfile);
+                                    if(!parsed.avatarUrl && avatar) {
+                                        parsed.avatarUrl = avatar;
+                                        localStorage.setItem('studyio_student_profile', JSON.stringify(parsed));
+                                    }
+                                }
                             }
                         } else if (event === 'SIGNED_OUT') {
                             this.currentUser = null;
@@ -1041,19 +1052,21 @@
                     });
                 },
 
-                // HELPER: Fetch Avatar
+                // HELPER: Fetch Avatar safely with Google fallback
                 getNavbarAvatar() {
                     if (!this.currentUser) return '';
                     
                     if (this.currentUser.role === 'tutor') {
-                        const p = JSON.parse(sessionStorage.getItem('studyio_tutor_profile'));
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
                         if (p && p.avatarUrl) return p.avatarUrl;
                     } 
                     else if (this.currentUser.role === 'student') {
-                        const p = JSON.parse(sessionStorage.getItem('studyio_student_profile'));
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
                         if (p && p.avatarUrl) return p.avatarUrl;
                     }
                     
+                    // Fall back to the Google Avatar injected into the session, or the UI generator
+                    if (this.currentUser.avatar) return this.currentUser.avatar;
                     return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.currentUser.name)}&background=b91c1c&color=fff&bold=true`;
                 },
 
@@ -1065,7 +1078,7 @@
                             options: {
                                 redirectTo: window.location.origin + window.location.pathname,
                                 queryParams: {
-                                    prompt: 'consent' // FORCES GOOGLE TO SHOW ACCOUNT PICKER
+                                    prompt: 'select_account' // *** FORCES GOOGLE TO SHOW ACCOUNT PICKER EVERY TIME ***
                                 }
                             }
                         });
@@ -1075,15 +1088,12 @@
                     }
                 },
 
-                // *** LOG IN LOGIC (Isolated to Session Storage) ***
                 submitLogin() {
                     this.isLoggingIn = true;
                     this.loginError = '';
                     
                     setTimeout(() => {
-                        // Registration memory remains global so other tabs can log in to a newly created account
                         const registeredCreds = JSON.parse(localStorage.getItem('studyio_mock_credentials'));
-                        
                         const inputEmail = this.loginData.email.trim().toLowerCase();
                         const inputPass = this.loginData.password.trim();
                         
@@ -1121,7 +1131,6 @@
                     window.location.reload(); 
                 },
 
-                // *** REGISTRATION LOGIC ***
                 async submitRegistration() {
                     this.isSubmitting = true;
                     try {
@@ -1178,7 +1187,7 @@
                                 coverImageUrl: "",
                                 subjects: this.regData.subjects ? this.regData.subjects.split(',').map(s=>s.trim()) : []
                             };
-                            sessionStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
+                            localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
                             
                             alert(`Success! Welcome ${this.regData.fullName}. You can now Log In!`); 
                         }
@@ -1213,7 +1222,7 @@
                             schedule: [] 
                         };
                         
-                        sessionStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
+                        localStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
                         window.location.href = 'tutor-dashboard.html';
                     }
                 },
@@ -1233,16 +1242,7 @@
                     if (this.newMessage.trim() === '') return; 
                     
                     const myName = this.currentUser ? this.currentUser.name : "Student";
-                    let myAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&background=b91c1c&color=fff&bold=true`;
-                    
-                    if (this.currentUser && this.currentUser.role === 'student') {
-                        const p = JSON.parse(sessionStorage.getItem('studyio_student_profile'));
-                        if (p && p.avatarUrl) myAvatar = p.avatarUrl;
-                    } 
-                    else if (this.currentUser && this.currentUser.role === 'tutor') {
-                        const p = JSON.parse(sessionStorage.getItem('studyio_tutor_profile'));
-                        if (p && p.avatarUrl) myAvatar = p.avatarUrl;
-                    }
+                    let myAvatar = this.getNavbarAvatar(); 
                     
                     this.mqttClient.publish(this.chatTopic, JSON.stringify({ 
                         type: 'chat', 
