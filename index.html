@@ -872,7 +872,7 @@
                 chatMessages: [], 
                 newMessage: '',
                 mqttClient: null, 
-                mySessionId: 'user_' + Math.random().toString(36).substr(2, 9), 
+                mySessionId: '', 
                 chatTopic: null, 
                 newTutorAlert: false, 
                 
@@ -1115,6 +1115,7 @@
                     if (!this.currentUser) {
                         this.navName = '';
                         this.navAvatar = '';
+                        this.mySessionId = '';
                         return;
                     }
 
@@ -1134,6 +1135,9 @@
 
                     this.navName = currentName;
                     this.navAvatar = currentAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentName)}&background=b91c1c&color=fff&bold=true`;
+                    
+                    // Force the session ID to be the user's stable name so chat history works!
+                    this.mySessionId = currentName;
                 },
 
                 // HELPER: Fetch Avatar safely with Google fallback
@@ -1233,7 +1237,6 @@
                     window.location.reload(); 
                 },
 
-                // *** FIX: SAVE APPLICATION TO ADMIN VAULT DIRECTLY ***
                 async submitRegistration() {
                     this.isSubmitting = true;
                     try {
@@ -1337,8 +1340,6 @@
                     }
                 },
 
-                // NOTE: setupAndGoToDashboard is no longer strictly used by the UI since we hardcoded the anchor tag, 
-                // but it handles initial profile building when an application is approved.
                 setupAndGoToDashboard() {
                     // Logic left intentionally blank as UI handles navigation securely
                 },
@@ -1354,7 +1355,7 @@
                     this.modalOpen = true; 
                 },
 
-                // *** FIX: BUILD THE PROFILE CARD TO SEND TO THE INBOX ***
+                // *** THE MASTER CHAT VAULT FIX ***
                 sendMessage() { 
                     if (this.newMessage.trim() === '') return; 
                     
@@ -1377,16 +1378,37 @@
                         if (p) myProfile = { ...p, role: 'tutor' };
                     }
 
-                    this.mqttClient.publish(this.chatTopic, JSON.stringify({ 
+                    const payload = { 
                         type: 'chat', 
-                        senderId: this.mySessionId, 
+                        senderId: myName, // STABLE ID
+                        targetContactId: this.chatTarget, // THE TUTOR
                         senderName: myName, 
                         avatarUrl: myAvatar,
-                        senderProfile: myProfile, // The missing link for the Inbox!
+                        senderProfile: myProfile,
                         text: this.newMessage 
-                    })); 
+                    };
+
+                    // 1. Send via live MQTT radio
+                    this.mqttClient.publish(this.chatTopic, JSON.stringify(payload)); 
+                    
+                    // 2. Write to Student's local memory vault
+                    let sKey = 'studyio_student_inbox_history_' + myName;
+                    let sHist = JSON.parse(localStorage.getItem(sKey) || '[]');
+                    sHist.push(payload);
+                    localStorage.setItem(sKey, JSON.stringify(sHist));
+
+                    // 3. Write to Tutor's local memory vault (Guarantee delivery!)
+                    let tKey = 'studyio_tutor_inbox_history_' + this.chatTarget;
+                    let tHist = JSON.parse(localStorage.getItem(tKey) || '[]');
+                    tHist.push(payload);
+                    localStorage.setItem(tKey, JSON.stringify(tHist));
+
+                    // Add to floating chat array
+                    this.chatMessages.push(payload);
+                    this.chatMessages = [...this.chatMessages]; // Force redraw
                     
                     this.newMessage = ''; 
+                    this.scrollToBottom();
                 },
 
                 scrollToBottom() { 
@@ -1523,7 +1545,6 @@
             }
         ];
 
-        // *** MASTER SYNC VAULT FIX ***
         function reconstructDatabase() {
             let hasChanges = false;
             const savedDirectory = localStorage.getItem('studyio_public_directory');

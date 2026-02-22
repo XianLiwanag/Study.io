@@ -328,10 +328,18 @@
     </main>
 
     <script>
+        // *** TAB ISOLATION FIX *** const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('studyio_tab_id', tabId);
+
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
-            { auth: { storage: window.sessionStorage } }
+            { 
+                auth: { 
+                    storage: window.sessionStorage,
+                    storageKey: 'studyio_auth_' + tabId 
+                } 
+            }
         );
 
         function studentApp() {
@@ -356,7 +364,9 @@
                 allMessages: [],
                 inboxMessage: '',
                 mqttClient: null,
-                mySessionId: 'student_' + Math.random().toString(36).substr(2, 9),
+                
+                // STABLE SESSION ID (Based on user name to persist across reloads)
+                mySessionId: '',
                 
                 // NEW DEFAULT PRE-MADES
                 defaultAvatars: [
@@ -395,6 +405,9 @@
                         this.saveProfile();
                     }
 
+                    // *** ESTABLISH PERMANENT SESSION ID FOR INBOX ROUTING ***
+                    this.mySessionId = this.profile.name || (this.currentUser ? this.currentUser.name : 'Unknown_Student');
+
                     // CACHE FIX
                     window.addEventListener('pageshow', (event) => {
                         if (!sessionStorage.getItem('studyio_current_user')) {
@@ -405,7 +418,7 @@
                     });
 
                     // LOAD INBOX HISTORY FROM MEMORY
-                    const savedMessages = localStorage.getItem('studyio_student_inbox_history_' + this.profile.name);
+                    const savedMessages = localStorage.getItem('studyio_student_inbox_history_' + this.mySessionId);
                     if (savedMessages) {
                         this.allMessages = JSON.parse(savedMessages);
                     } else {
@@ -427,7 +440,7 @@
                             text: 'Welcome to your dedicated Student Inbox! When you message tutors from the home page, their replies will safely appear right here.'
                         };
                         this.allMessages = [welcomeMsg];
-                        localStorage.setItem('studyio_student_inbox_history_' + this.profile.name, JSON.stringify(this.allMessages));
+                        localStorage.setItem('studyio_student_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
                     }
                     
                     this.rebuildContacts();
@@ -438,17 +451,29 @@
                         this.contacts.forEach(c => {
                             this.mqttClient.subscribe('studyio/room/' + c.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase());
                         });
+                        
+                        // Also subscribe to our own name just in case
+                        this.mqttClient.subscribe('studyio/room/' + this.mySessionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase());
                     });
 
                     this.mqttClient.on('message', (topic, message) => {
                         const parsedMsg = JSON.parse(message.toString());
+                        
                         if (parsedMsg.type === 'chat') {
-                            // Save incoming messages to history
-                            this.allMessages.push(parsedMsg);
-                            localStorage.setItem('studyio_student_inbox_history_' + this.profile.name, JSON.stringify(this.allMessages));
                             
-                            this.rebuildContacts();
-                            this.scrollToBottom();
+                            // Check if this message is actually for me or from me
+                            if (parsedMsg.targetContactId === this.mySessionId || parsedMsg.senderId === this.mySessionId) {
+                                // Save incoming messages to history
+                                this.allMessages.push(parsedMsg);
+                                localStorage.setItem('studyio_student_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
+                                
+                                this.rebuildContacts();
+                                
+                                // *** ALPINE REACTIVITY FIX ***
+                                this.allMessages = [...this.allMessages];
+                                
+                                this.scrollToBottom();
+                            }
                         }
                     });
                 },
@@ -464,6 +489,7 @@
                 // *** INBOX LOGIC & ROLE PARSING ***
                 rebuildContacts() {
                     const uniqueContacts = {};
+                    
                     this.allMessages.forEach(msg => {
                         // Create contact cards for anyone who isn't the student themselves
                         if (msg.senderId !== this.mySessionId && msg.senderProfile) {
@@ -479,6 +505,7 @@
                             };
                         }
                     });
+                    
                     this.contacts = Object.values(uniqueContacts);
                 },
 
@@ -495,6 +522,7 @@
                     );
                 },
 
+                // *** THE MASTER CHAT VAULT FIX ***
                 sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
@@ -508,7 +536,7 @@
 
                     const payload = { 
                         type: 'chat', 
-                        senderId: this.mySessionId, 
+                        senderId: this.mySessionId, // STABLE ID
                         targetContactId: this.activeContact.id, // Mark who this is for
                         senderName: this.profile.name, 
                         avatarUrl: this.finalAvatarUrl, 
@@ -516,13 +544,25 @@
                         text: this.inboxMessage 
                     };
 
-                    // Broadcast to the specific tutor's room
+                    // 1. Broadcast to the specific tutor's room over live MQTT
                     const topic = 'studyio/room/' + this.activeContact.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                     this.mqttClient.publish(topic, JSON.stringify(payload)); 
                     
-                    // Add it locally to our UI instantly
+                    // 2. Write to Student's local memory vault
+                    let sKey = 'studyio_student_inbox_history_' + this.mySessionId;
+                    let sHist = JSON.parse(localStorage.getItem(sKey) || '[]');
+                    sHist.push(payload);
+                    localStorage.setItem(sKey, JSON.stringify(sHist));
+
+                    // 3. Write directly to Tutor's local memory vault (Guarantee delivery!)
+                    let tKey = 'studyio_tutor_inbox_history_' + this.activeContact.name;
+                    let tHist = JSON.parse(localStorage.getItem(tKey) || '[]');
+                    tHist.push(payload);
+                    localStorage.setItem(tKey, JSON.stringify(tHist));
+
+                    // Update UI instantly
                     this.allMessages.push(payload);
-                    localStorage.setItem('studyio_student_inbox_history_' + this.profile.name, JSON.stringify(this.allMessages));
+                    this.allMessages = [...this.allMessages];
 
                     this.inboxMessage = ''; 
                     this.scrollToBottom();
