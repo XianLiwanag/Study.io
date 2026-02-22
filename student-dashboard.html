@@ -89,7 +89,7 @@
         </div>
     </div>
 
-    <main x-show="activeTab === 'profile'" class="max-w-7xl mx-auto px-4 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 min-h-[70vh]">
+    <main x-cloak x-show="activeTab === 'profile'" class="max-w-7xl mx-auto px-4 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 min-h-[70vh]">
         
         <div class="lg:col-span-1">
             <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -141,7 +141,7 @@
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6 border-b border-gray-100 pb-4 gap-2">
                     <div>
                         <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Edit Profile Settings</h2>
-                        <p class="text-xs sm:text-sm text-gray-500">Changes are instantly synced to the cloud.</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Personalize your account. Tutors will see this when you message them!</p>
                     </div>
                     <div class="text-[10px] sm:text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 self-start sm:self-auto inline-flex items-center gap-1">
                         <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Auto-Saving
@@ -251,7 +251,9 @@
                 <div class="overflow-y-auto flex-1 chat-scroll p-2 space-y-1">
                     <template x-for="contact in contacts" :key="contact.id">
                         <button @click="selectContact(contact)" :class="activeContact?.id === contact.id ? 'bg-oxfordRed text-white shadow-md' : 'bg-transparent text-gray-800 hover:bg-gray-200'" class="w-full text-left p-3 rounded-lg transition flex items-center gap-3">
+                            
                             <img :src="contact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random&color=fff&bold=true`" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
+                            
                             <div class="overflow-hidden flex-1">
                                 <div class="font-bold text-sm truncate" x-text="contact.name"></div>
                                 <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate">
@@ -277,7 +279,9 @@
                     <div class="flex flex-col h-full w-full">
                         <div class="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
                             <div class="flex items-start gap-4">
+                                
                                 <img :src="activeContact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeContact.name)}&background=random&color=fff&bold=true`" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
+                                
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
@@ -314,7 +318,9 @@
                                     
                                     <div x-show="msg.senderId !== mySessionId && !msg.isSystemAlert" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
+                                            
                                             <img :src="msg.avatarUrl || msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'T')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            
                                             <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
@@ -336,7 +342,7 @@
     </main>
 
     <script>
-        // *** TAB ISOLATION FIX ***
+        // STRICT TAB ISOLATION (Fixed line break)
         const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('studyio_tab_id', tabId);
 
@@ -548,11 +554,6 @@
                     this.mqttClient.on('connect', () => {
                         // Subscribe to my own name
                         this.mqttClient.subscribe('studyio/room/' + this.mySessionId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase());
-                        
-                        // Subscribe to all my existing contacts
-                        this.contacts.forEach(c => {
-                            this.mqttClient.subscribe('studyio/room/' + c.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase());
-                        });
                     });
 
                     this.mqttClient.on('message', (topic, message) => {
@@ -563,11 +564,11 @@
                             // *** FIX 1: THE ANTI-ECHO RULE ***
                             if (parsedMsg.senderId === this.mySessionId) return;
                             
-                            // *** FIX 2: THE ANTI-DUPLICATE DEDUPLICATOR ***
+                            // *** FIX 2: THE ANTI-DUPLICATE RULE ***
                             const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
                             if (isDuplicate) return;
                             
-                            // Check if this message involves me
+                            // Check if this message is actually for me
                             if (parsedMsg.targetContactId === this.mySessionId) {
                                 this.allMessages.push(parsedMsg);
                                 this.rebuildContacts();
@@ -593,7 +594,6 @@
                     this.allMessages.forEach(msg => {
                         let contactProfile = null;
                         
-                        // Determine who the "other person" is in this specific message
                         if (msg.senderId === this.mySessionId && msg.targetProfile) {
                             contactProfile = msg.targetProfile;
                         } else if (msg.targetContactId === this.mySessionId && msg.senderProfile) {
@@ -650,22 +650,22 @@
 
                     const payload = { 
                         type: 'chat', 
-                        senderId: this.mySessionId, // STABLE ID
-                        targetContactId: this.activeContact.name, // Their strict name
+                        senderId: this.mySessionId,
+                        targetContactId: this.activeContact.name, 
                         senderName: this.profile.name, 
                         avatarUrl: this.finalAvatarUrl, 
                         senderProfile: myProfile, 
-                        targetProfile: this.activeContact, // Pass back so they know who replied
+                        targetProfile: this.activeContact, 
                         text: this.inboxMessage,
                         timestamp: Date.now(),
                         isSystemAlert: false
                     };
 
-                    // 1. Broadcast to the specific tutor's room over live MQTT
+                    // 1. Broadcast via live MQTT radio
                     const topic = 'studyio/room/' + this.activeContact.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                     this.mqttClient.publish(topic, JSON.stringify(payload)); 
                     
-                    // 2. Hard-Save to Supabase Cloud Vault (Guaranteed Delivery)
+                    // 2. Hard-Save to Supabase Cloud Vault
                     try {
                         await supabaseClient.from('messages').insert([{
                             sender_id: payload.senderId,

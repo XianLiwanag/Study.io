@@ -158,7 +158,7 @@
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6 border-b border-gray-100 pb-4 gap-2">
                     <div>
                         <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Edit Profile Settings</h2>
-                        <p class="text-xs sm:text-sm text-gray-500">Changes are instantly synced to the cloud and broadcast to the main website.</p>
+                        <p class="text-xs sm:text-sm text-gray-500">Changes are instantly synced to the cloud and broadcasted to the main website.</p>
                     </div>
                     <div class="text-[10px] sm:text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 self-start sm:self-auto inline-flex items-center gap-1">
                         <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Auto-Saving
@@ -368,7 +368,7 @@
                                     <div x-show="msg.senderId !== mySessionId && !msg.isSystemAlert" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
                                             
-                                            <img :src="msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'S')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            <img :src="msg.avatarUrl || msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'S')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
                                             
                                             <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
@@ -391,7 +391,8 @@
     </main>
 
     <script>
-        // *** TAB ISOLATION FIX *** const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        // *** STRICT TAB ISOLATION ***
+        const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('studyio_tab_id', tabId);
 
         const supabaseClient = window.supabase.createClient(
@@ -408,7 +409,7 @@
         function tutorApp() {
             return {
                 currentUser: null, 
-                activeTab: 'profile', 
+                activeTab: 'profile', // Default to Profile view
                 profile: {
                     name: "", 
                     strand: "Grade 12", 
@@ -432,7 +433,7 @@
                 inboxMessage: '',
 
                 mqttClient: null, 
-                mySessionId: '', 
+                mySessionId: '', // Set dynamically based on Profile Name
                 chatTopic: null, 
                 syncTimer: null, 
 
@@ -480,6 +481,8 @@
                                     this.profile.subjects = profileDB.subjects || [];
                                     this.profile.schedule = profileDB.schedule || [];
                                     
+                                    // *** ESTABLISH PERMANENT SESSION ID ***
+                                    // We lock this strictly to the User's Name so refreshing doesn't wipe history
                                     this.mySessionId = this.profile.name;
                                     
                                     // Start listening to the network
@@ -531,6 +534,25 @@
                             this.rebuildContacts();
                             this.scrollToBottom();
                         }
+                        
+                        // Check for handoff from the directory
+                        const pendingChat = localStorage.getItem('studyio_pending_chat_target');
+                        if (pendingChat) {
+                            const targetStudent = JSON.parse(pendingChat);
+                            
+                            // Switch to Inbox
+                            this.activeTab = 'inbox';
+                            
+                            setTimeout(() => {
+                                const contactToSelect = this.contacts.find(c => c.id === targetStudent.name);
+                                if (contactToSelect) {
+                                    this.selectContact(contactToSelect);
+                                }
+                            }, 100);
+                            
+                            localStorage.removeItem('studyio_pending_chat_target');
+                        }
+
                     } catch(err) {
                         console.error("Failed to load cloud messages:", err);
                     }
@@ -550,11 +572,11 @@
                         const parsedMsg = JSON.parse(message.toString());
                         
                         if (parsedMsg.type === 'chat') {
-                            // *** THE ANTI-ECHO RULE ***
+                            
+                            // *** FIX 1: THE ANTI-ECHO RULE ***
                             if (parsedMsg.senderId === this.mySessionId) return;
                             
-                            // *** ANTI-DUPLICATE RULE ***
-                            // Prevent double entries if cloud and network deliver at the same exact time
+                            // *** FIX 2: THE ANTI-DUPLICATE RULE ***
                             const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
                             if (isDuplicate) return;
 
@@ -574,24 +596,25 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** SYMMETRICAL PROFILE PARSING ***
+                // *** FIX 3: DUPLICATE PROFILE MERGING ***
                 rebuildContacts() {
                     const uniqueContacts = {};
                     
                     this.allMessages.forEach(msg => {
                         let contactProfile = null;
                         
+                        // Parse Symmetrical Profile Packaging
                         if (msg.senderId === this.mySessionId && msg.targetProfile) {
                             contactProfile = msg.targetProfile;
                         } else if (msg.targetContactId === this.mySessionId && msg.senderProfile) {
                             contactProfile = msg.senderProfile;
                         } else if (msg.senderId !== this.mySessionId && msg.senderProfile) {
-                            contactProfile = msg.senderProfile;
+                            contactProfile = msg.senderProfile; // Fallback
                         }
 
                         if (contactProfile && contactProfile.name) {
                             uniqueContacts[contactProfile.name] = {
-                                id: contactProfile.name,
+                                id: contactProfile.name, // Use Name as strict ID
                                 name: contactProfile.name,
                                 avatarUrl: contactProfile.avatarUrl || msg.avatarUrl || '',
                                 strand: contactProfile.strand || 'Student',
@@ -622,7 +645,7 @@
                     });
                 },
 
-                // *** SEND TO CLOUD DATABASE ***
+                // *** FIX 4: THE CLOUD OUTBOX ***
                 async sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
@@ -638,22 +661,22 @@
 
                     const payload = { 
                         type: 'chat', 
-                        senderId: this.mySessionId,
-                        targetContactId: this.activeContact.name, 
+                        senderId: this.mySessionId, // My strict name
+                        targetContactId: this.activeContact.name, // Their strict name
                         senderName: this.profile.name, 
                         avatarUrl: this.finalAvatarUrl, 
                         senderProfile: myProfile, 
-                        targetProfile: this.activeContact, 
+                        targetProfile: this.activeContact, // Pass back so they know who replied
                         text: this.inboxMessage,
                         timestamp: Date.now(),
                         isSystemAlert: false
                     };
 
-                    // 1. Broadcast via live MQTT radio so it feels instant
+                    // 1. Broadcast via live MQTT radio
                     const topic = 'studyio/room/' + this.activeContact.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                     this.mqttClient.publish(topic, JSON.stringify(payload)); 
                     
-                    // 2. Hard-Save to Supabase Cloud Vault (Guaranteed Delivery)
+                    // 2. Insert the message into the Supabase Cloud Vault
                     try {
                         await supabaseClient.from('messages').insert([{
                             sender_id: payload.senderId,
