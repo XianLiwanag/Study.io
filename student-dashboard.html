@@ -251,7 +251,9 @@
                             <img :src="contact.avatarUrl" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
                             <div class="overflow-hidden flex-1">
                                 <div class="font-bold text-sm truncate" x-text="contact.name"></div>
-                                <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate" x-text="contact.strand"></div>
+                                <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate">
+                                    <span class="uppercase font-bold tracking-wider" x-text="contact.role"></span> • <span x-text="contact.strand"></span>
+                                </div>
                             </div>
                         </button>
                     </template>
@@ -277,7 +279,7 @@
                                     <div class="flex justify-between items-start">
                                         <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
                                         
-                                        <div class="text-right flex-shrink-0 ml-2">
+                                        <div class="text-right flex-shrink-0 ml-2" x-show="activeContact.role === 'tutor'">
                                             <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Rate</span><br>
                                             <span class="text-sm font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">₱<span x-text="activeContact.hourlyRate || '0'"></span>/hr</span>
                                         </div>
@@ -326,7 +328,6 @@
     </main>
 
     <script>
-        // Supabase initialized with SessionStorage for Tab Isolation
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
@@ -388,7 +389,9 @@
                         }
                     } else if (this.currentUser) {
                         this.profile.name = this.currentUser.name;
-                        if (this.currentUser.avatar) this.profile.avatarUrl = this.currentUser.avatar;
+                        if (this.currentUser.avatar) {
+                            this.profile.avatarUrl = this.currentUser.avatar;
+                        }
                         this.saveProfile();
                     }
 
@@ -413,7 +416,14 @@
                             targetContactId: this.mySessionId,
                             senderName: 'Study.io Team',
                             avatarUrl: 'https://ui-avatars.com/api/?name=Study.io&background=b91c1c&color=fff&bold=true',
-                            senderProfile: { name: 'Study.io Support', strand: 'Platform Administrators', bio: 'We ensure safe and fast matchmaking!', subjects: ['Platform Support'], hourlyRate: 0 },
+                            senderProfile: { 
+                                name: 'Study.io Support', 
+                                strand: 'Platform Administrators', 
+                                bio: 'We ensure safe and fast matchmaking!', 
+                                subjects: ['Platform Support'], 
+                                hourlyRate: 0,
+                                role: 'system'
+                            },
                             text: 'Welcome to your dedicated Student Inbox! When you message tutors from the home page, their replies will safely appear right here.'
                         };
                         this.allMessages = [welcomeMsg];
@@ -451,7 +461,7 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // *** INBOX LOGIC ***
+                // *** INBOX LOGIC & ROLE PARSING ***
                 rebuildContacts() {
                     const uniqueContacts = {};
                     this.allMessages.forEach(msg => {
@@ -462,9 +472,10 @@
                                 name: msg.senderProfile.name || msg.senderName,
                                 avatarUrl: msg.avatarUrl,
                                 strand: msg.senderProfile.strand || 'Tutor',
-                                bio: msg.senderProfile.bio,
+                                bio: msg.senderProfile.bio || '',
                                 subjects: msg.senderProfile.subjects || [],
-                                hourlyRate: msg.senderProfile.hourlyRate || 0
+                                hourlyRate: msg.senderProfile.hourlyRate || 0,
+                                role: msg.senderProfile.role || 'tutor'
                             };
                         }
                     });
@@ -487,13 +498,21 @@
                 sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
+                    let myProfile = { 
+                        name: this.profile.name, 
+                        strand: this.profile.strand, 
+                        bio: this.profile.bio, 
+                        subjects: this.profile.subjects, 
+                        role: "student" 
+                    };
+
                     const payload = { 
                         type: 'chat', 
                         senderId: this.mySessionId, 
                         targetContactId: this.activeContact.id, // Mark who this is for
                         senderName: this.profile.name, 
                         avatarUrl: this.finalAvatarUrl, 
-                        senderProfile: this.profile,
+                        senderProfile: myProfile, // Securely attach the Student Profile Card
                         text: this.inboxMessage 
                     };
 
@@ -530,31 +549,99 @@
                     const data = {
                         "Grade 11": { 
                             "Core": [
-                                "Physical Education and Health", "General Mathematics", "21st Century Literature", 
-                                "Empowerment Technologies", "Entrepreneurship", "Earth Science", 
-                                "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", 
-                                "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"
+                                "Physical Education and Health", 
+                                "General Mathematics", 
+                                "21st Century Literature", 
+                                "Empowerment Technologies", 
+                                "Entrepreneurship", 
+                                "Earth Science", 
+                                "Earth and Life Science", 
+                                "Reading and Writing Skills", 
+                                "Practical Research 1", 
+                                "Komunikasyon at Pananaliksik", 
+                                "Statistics and Probability", 
+                                "Introduction to the Philosophy of the Human Person"
                             ], 
-                            "STEM": ["General Biology 1", "Pre-Calculus", "General Chemistry 1", "General Biology 2", "Basic Calculus"], 
-                            "ABM": ["Organization and Management", "Business Math", "Applied Economics", "Principles of Marketing", "Fundamentals of Accountancy, Business, & Math 1"], 
-                            "HUMSS": ["Introduction to World Religion and Belief System", "Discipline and Ideas in Social Sciences", "Philippine Politics and Governance", "Creative Writing", "Discipline and Ideas in the Applied Social Sciences"], 
-                            "ICT": ["Computer System Servicing 11", "Computer System Servicing (Practical) 11"], 
-                            "HE": ["Cookery 11", "Bread and Pastry Production"] 
+                            "STEM": [
+                                "General Biology 1", 
+                                "Pre-Calculus", 
+                                "General Chemistry 1", 
+                                "General Biology 2", 
+                                "Basic Calculus"
+                            ], 
+                            "ABM": [
+                                "Organization and Management", 
+                                "Business Math", 
+                                "Applied Economics", 
+                                "Principles of Marketing", 
+                                "Fundamentals of Accountancy, Business, & Math 1"
+                            ], 
+                            "HUMSS": [
+                                "Introduction to World Religion and Belief System", 
+                                "Discipline and Ideas in Social Sciences", 
+                                "Philippine Politics and Governance", 
+                                "Creative Writing", 
+                                "Discipline and Ideas in the Applied Social Sciences"
+                            ], 
+                            "ICT": [
+                                "Computer System Servicing 11", 
+                                "Computer System Servicing (Practical) 11"
+                            ], 
+                            "HE": [
+                                "Cookery 11", 
+                                "Bread and Pastry Production"
+                            ] 
                         },
                         "Grade 12": { 
                             "Core": [
-                                "Personal Development", "Oral Communication in Context", "Understanding Culture, Society, and Politics", 
-                                "Pagsulat sa Filipino (Akademik)", "Pagsulat sa Filipino (TekBok)", "Practical Research 2", 
-                                "Contemporary Philippine Arts from the Regions", "Physical Education", "English for Academics and Professional Purposes", 
-                                "Inquiries, Investigation, and Immersion", "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", "Media Information and Literacy"
+                                "Personal Development", 
+                                "Oral Communication in Context", 
+                                "Understanding Culture, Society, and Politics", 
+                                "Pagsulat sa Filipino (Akademik)", 
+                                "Pagsulat sa Filipino (TekBok)", 
+                                "Practical Research 2", 
+                                "Contemporary Philippine Arts from the Regions", 
+                                "Physical Education", 
+                                "English for Academics and Professional Purposes", 
+                                "Inquiries, Investigation, and Immersion", 
+                                "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", 
+                                "Media Information and Literacy"
                             ], 
-                            "STEM": ["General Physics 1", "General Chemistry 2", "Disaster Readiness and Risk Reduction", "General Physics 2", "Capstone"], 
-                            "ABM": ["Fundamentals of Accountancy, Business, & Math 2", "Physical Science", "Business Finance", "Business Ethics and Social Responsibility", "Business Enterprise and Simulation"], 
-                            "HUMSS": ["Creative Non-Fiction", "Physical Science", "Community, Engagement, Solidarity and Citizenship", "Trends, Networks, and Critical Thinking", "Culminating Activity"], 
-                            "ICT": ["Computer Servicing System 12", "Physical Science", "Computer System Servicing 12", "Computer System Servicing (Practical) 12"], 
-                            "HE": ["Cookery 12", "Physical Science", "Food and Beverage Services"] 
+                            "STEM": [
+                                "General Physics 1", 
+                                "General Chemistry 2", 
+                                "Disaster Readiness and Risk Reduction", 
+                                "General Physics 2", 
+                                "Capstone"
+                            ], 
+                            "ABM": [
+                                "Fundamentals of Accountancy, Business, & Math 2", 
+                                "Physical Science", 
+                                "Business Finance", 
+                                "Business Ethics and Social Responsibility", 
+                                "Business Enterprise and Simulation"
+                            ], 
+                            "HUMSS": [
+                                "Creative Non-Fiction", 
+                                "Physical Science", 
+                                "Community, Engagement, Solidarity and Citizenship", 
+                                "Trends, Networks, and Critical Thinking", 
+                                "Culminating Activity"
+                            ], 
+                            "ICT": [
+                                "Computer Servicing System 12", 
+                                "Physical Science", 
+                                "Computer System Servicing 12", 
+                                "Computer System Servicing (Practical) 12"
+                            ], 
+                            "HE": [
+                                "Cookery 12", 
+                                "Physical Science", 
+                                "Food and Beverage Services"
+                            ] 
                         }
                     };
+                    
                     let groups = {};
                     for (const grade in data) { 
                         for (const strand in data[grade]) { 
@@ -577,6 +664,7 @@
                         this.selectedSubjectToAdd = ''; 
                     } 
                 },
+                
                 removeSubject(index) { 
                     this.profile.subjects.splice(index, 1); 
                     this.saveProfile(); 

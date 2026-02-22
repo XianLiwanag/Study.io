@@ -245,11 +245,14 @@
                             </select>
                             <button @click="addSubject()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Subject</button>
                         </div>
+                        
                         <div class="flex flex-wrap gap-2">
                             <template x-for="(sub, index) in profile.subjects" :key="index">
                                 <div class="bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-xs sm:text-sm flex items-center gap-2 sm:gap-3 shadow-sm">
                                     <span x-text="sub" class="font-medium"></span>
-                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1"><i class="fa-solid fa-times"></i></button>
+                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
                                 </div>
                             </template>
                         </div>
@@ -271,6 +274,7 @@
                             <input type="text" x-model="newScheduleTime" @keydown.enter.prevent="addSchedule()" placeholder="e.g., 4:00 PM - 6:00 PM" class="flex-1 border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm w-full">
                             <button @click="addSchedule()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Slot</button>
                         </div>
+                        
                         <div class="space-y-2">
                             <template x-for="(slot, index) in profile.schedule" :key="index">
                                 <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg shadow-sm">
@@ -278,7 +282,9 @@
                                         <span class="font-bold text-gray-800 text-xs sm:text-sm w-20 sm:w-24" x-text="slot.day"></span>
                                         <span class="text-gray-600 bg-white px-2 py-1 sm:px-3 sm:py-1 rounded text-[10px] sm:text-sm border border-gray-200 shadow-sm" x-text="slot.time"></span>
                                     </div>
-                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition"><i class="fa-solid fa-trash text-xs sm:text-sm"></i></button>
+                                    <button @click="removeSchedule(index)" class="text-red-500 hover:text-white hover:bg-red-500 bg-white p-1.5 sm:p-2 rounded-md border border-gray-200 shadow-sm transition">
+                                        <i class="fa-solid fa-trash text-xs sm:text-sm"></i>
+                                    </button>
                                 </div>
                             </template>
                         </div>
@@ -301,7 +307,9 @@
                             <img :src="contact.avatarUrl" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
                             <div class="overflow-hidden flex-1">
                                 <div class="font-bold text-sm truncate" x-text="contact.name"></div>
-                                <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate" x-text="contact.strand"></div>
+                                <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate">
+                                    <span class="uppercase font-bold tracking-wider" x-text="contact.role"></span> • <span x-text="contact.strand"></span>
+                                </div>
                             </div>
                         </button>
                     </template>
@@ -326,7 +334,7 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
                                         <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
-                                        <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-wide">Student</span>
+                                        <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-wide" x-text="activeContact.role"></span>
                                     </div>
                                     <p class="text-xs font-semibold text-oxfordRed mb-1" x-text="activeContact.strand"></p>
                                     <p class="text-xs text-gray-600 line-clamp-2 italic">"<span x-text="activeContact.bio || 'Needs help studying.'"></span>"</p>
@@ -342,6 +350,7 @@
                         <div id="inbox-messages-container" class="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-4 chat-scroll">
                             <template x-for="(msg, index) in activeChatHistory" :key="index">
                                 <div class="w-full flex flex-col">
+                                    
                                     <div x-show="msg.senderId === mySessionId" class="self-end flex flex-col w-full max-w-[85%] items-end">
                                         <div class="flex gap-2 w-full justify-end">
                                             <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
@@ -371,36 +380,58 @@
     </main>
 
     <script>
+        // *** TAB ISOLATION FIX *** const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('studyio_tab_id', tabId);
+
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
-            { auth: { storage: window.sessionStorage } }
+            { 
+                auth: { 
+                    storage: window.sessionStorage,
+                    storageKey: 'studyio_auth_' + tabId 
+                } 
+            }
         );
 
         function tutorApp() {
             return {
                 currentUser: null, 
-                activeTab: 'profile', // Default to Profile view
+                activeTab: 'profile', 
                 profile: {
-                    id: 5, name: "Cedric Santos", strand: "Grade 12 - ABM", 
+                    id: 5, 
+                    name: "Cedric Santos", 
+                    strand: "Grade 12 - ABM", 
                     bio: "Numbers tell a story. I can help you balance your sheets, understand accounting principles, and excel in Business Math.",
-                    hourlyRate: 180, headerColor: "bg-yellow-600", avatarUrl: "", coverImageUrl: "",
-                    subjects: ["Fundamentals of Accountancy, Business, & Math 1", "Fundamentals of Accountancy, Business, & Math 2", "Business Math"], schedule: [{ day: "Tuesday", time: "4:00 PM - 6:00 PM" }]
+                    hourlyRate: 180, 
+                    headerColor: "bg-yellow-600", 
+                    avatarUrl: "", 
+                    coverImageUrl: "",
+                    subjects: [
+                        "Fundamentals of Accountancy, Business, & Math 1", 
+                        "Fundamentals of Accountancy, Business, & Math 2", 
+                        "Business Math"
+                    ], 
+                    schedule: [
+                        { day: "Tuesday", time: "4:00 PM - 6:00 PM" }
+                    ]
                 },
                 
-                selectedSubjectToAdd: "", newScheduleDay: "", newScheduleTime: "",
+                selectedSubjectToAdd: "", 
+                newScheduleDay: "", 
+                newScheduleTime: "",
                 
                 // INBOX VARIABLES
                 contacts: [],
                 activeContact: null,
-                allMessages: [], // Stores all global messages for this room
+                allMessages: [], 
                 inboxMessage: '',
 
                 mqttClient: null, 
                 mySessionId: 'tutor_' + Math.random().toString(36).substr(2, 9), 
-                chatTopic: null, syncTimer: null, 
+                chatTopic: null, 
+                syncTimer: null, 
 
-                // *** NEW DEFAULT PRE-MADES ***
                 defaultAvatars: [
                     'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
                     'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
@@ -446,6 +477,7 @@
 
                     this.chatTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
+                    
                     this.mqttClient.on('connect', () => {
                         this.mqttClient.subscribe(this.chatTopic);
                     });
@@ -453,11 +485,14 @@
                     this.mqttClient.on('message', (topic, message) => {
                         const parsedMsg = JSON.parse(message.toString());
                         if (parsedMsg.type === 'chat') {
-                            // Only save actual messages (ignore system alerts)
                             this.allMessages.push(parsedMsg);
                             localStorage.setItem('studyio_tutor_inbox_history_' + this.profile.name, JSON.stringify(this.allMessages));
                             
                             this.rebuildContacts();
+                            
+                            // *** ALPINE REACTIVITY FIX ***
+                            this.allMessages = [...this.allMessages];
+                            
                             this.scrollToBottom();
                         }
                     });
@@ -471,22 +506,24 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
-                // INBOX LOGIC
+                // *** INBOX LOGIC & ROLE PARSING ***
                 rebuildContacts() {
-                    // Extract unique external contacts from messages
                     const uniqueContacts = {};
+                    
                     this.allMessages.forEach(msg => {
                         if (msg.senderId !== this.mySessionId && msg.senderProfile) {
                             uniqueContacts[msg.senderId] = {
                                 id: msg.senderId,
                                 name: msg.senderProfile.name || msg.senderName,
                                 avatarUrl: msg.avatarUrl,
-                                strand: msg.senderProfile.strand || 'Student',
-                                bio: msg.senderProfile.bio,
-                                subjects: msg.senderProfile.subjects || []
+                                strand: msg.senderProfile.strand || 'Unknown Strand',
+                                bio: msg.senderProfile.bio || '',
+                                subjects: msg.senderProfile.subjects || [],
+                                role: msg.senderProfile.role || 'student' 
                             };
                         }
                     });
+                    
                     this.contacts = Object.values(uniqueContacts);
                 },
 
@@ -497,29 +534,42 @@
 
                 get activeChatHistory() {
                     if (!this.activeContact) return [];
-                    // Filter messages to show only the conversation between me and the active contact
-                    return this.allMessages.filter(msg => msg.senderId === this.activeContact.id || (msg.senderId === this.mySessionId && msg.targetContactId === this.activeContact.id));
+                    return this.allMessages.filter(msg => 
+                        msg.senderId === this.activeContact.id || 
+                        (msg.senderId === this.mySessionId && msg.targetContactId === this.activeContact.id)
+                    );
                 },
 
                 sendInboxMessage() { 
                     if (this.inboxMessage.trim() === '' || !this.activeContact) return; 
                     
+                    // Package the Tutor's profile card to send back to the student
+                    let myProfile = { 
+                        name: this.profile.name, 
+                        strand: this.profile.strand, 
+                        bio: this.profile.bio, 
+                        subjects: this.profile.subjects, 
+                        hourlyRate: this.profile.hourlyRate,
+                        role: "tutor" 
+                    };
+
                     const payload = { 
                         type: 'chat', 
                         senderId: this.mySessionId, 
-                        targetContactId: this.activeContact.id, // Mark who this is for
+                        targetContactId: this.activeContact.id, 
                         senderName: this.profile.name, 
                         avatarUrl: this.finalAvatarUrl, 
-                        senderProfile: this.profile,
+                        senderProfile: myProfile, 
                         text: this.inboxMessage 
                     };
 
-                    // Broadcast it
                     this.mqttClient.publish(this.chatTopic, JSON.stringify(payload)); 
                     
-                    // The MQTT listener will catch it and add it to allMessages, but we add it manually here too for instant UI
                     this.allMessages.push(payload);
                     localStorage.setItem('studyio_tutor_inbox_history_' + this.profile.name, JSON.stringify(this.allMessages));
+
+                    // *** ALPINE REACTIVITY FIX ***
+                    this.allMessages = [...this.allMessages];
 
                     this.inboxMessage = ''; 
                     this.scrollToBottom();
@@ -533,27 +583,133 @@
                 },
 
                 get finalAvatarUrl() {
-                    if (this.profile.avatarUrl && this.profile.avatarUrl.trim() !== "") { return this.profile.avatarUrl; }
+                    if (this.profile.avatarUrl && this.profile.avatarUrl.trim() !== "") { 
+                        return this.profile.avatarUrl; 
+                    }
                     return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.profile.name || 'Tutor')}&background=random&color=fff&bold=true`;
                 },
 
                 get groupedSubjects() {
                     const data = {
-                        "Grade 11": { "Core": ["Physical Education and Health", "General Mathematics", "21st Century Literature", "Empowerment Technologies", "Entrepreneurship", "Earth Science", "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"], "STEM": ["General Biology 1", "Pre-Calculus", "General Chemistry 1", "General Biology 2", "Basic Calculus"], "ABM": ["Organization and Management", "Business Math", "Applied Economics", "Principles of Marketing", "Fundamentals of Accountancy, Business, & Math 1"], "HUMSS": ["Introduction to World Religion and Belief System", "Discipline and Ideas in Social Sciences", "Philippine Politics and Governance", "Creative Writing", "Discipline and Ideas in the Applied Social Sciences"], "ICT": ["Computer System Servicing 11", "Computer System Servicing (Practical) 11"], "HE": ["Cookery 11", "Bread and Pastry Production"] },
-                        "Grade 12": { "Core": ["Personal Development", "Oral Communication in Context", "Understanding Culture, Society, and Politics", "Pagsulat sa Filipino (Akademik)", "Pagsulat sa Filipino (TekBok)", "Practical Research 2", "Contemporary Philippine Arts from the Regions", "Physical Education", "English for Academics and Professional Purposes", "Inquiries, Investigation, and Immersion", "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", "Media Information and Literacy"], "STEM": ["General Physics 1", "General Chemistry 2", "Disaster Readiness and Risk Reduction", "General Physics 2", "Capstone"], "ABM": ["Fundamentals of Accountancy, Business, & Math 2", "Physical Science", "Business Finance", "Business Ethics and Social Responsibility", "Business Enterprise and Simulation"], "HUMSS": ["Creative Non-Fiction", "Physical Science", "Community, Engagement, Solidarity and Citizenship", "Trends, Networks, and Critical Thinking", "Culminating Activity"], "ICT": ["Computer Servicing System 12", "Physical Science", "Computer System Servicing 12", "Computer System Servicing (Practical) 12"], "HE": ["Cookery 12", "Physical Science", "Food and Beverage Services"] }
+                        "Grade 11": { 
+                            "Core": [
+                                "Physical Education and Health", 
+                                "General Mathematics", 
+                                "21st Century Literature", 
+                                "Empowerment Technologies", 
+                                "Entrepreneurship", 
+                                "Earth Science", 
+                                "Earth and Life Science", 
+                                "Reading and Writing Skills", 
+                                "Practical Research 1", 
+                                "Komunikasyon at Pananaliksik", 
+                                "Statistics and Probability", 
+                                "Introduction to the Philosophy of the Human Person"
+                            ], 
+                            "STEM": [
+                                "General Biology 1", 
+                                "Pre-Calculus", 
+                                "General Chemistry 1", 
+                                "General Biology 2", 
+                                "Basic Calculus"
+                            ], 
+                            "ABM": [
+                                "Organization and Management", 
+                                "Business Math", 
+                                "Applied Economics", 
+                                "Principles of Marketing", 
+                                "Fundamentals of Accountancy, Business, & Math 1"
+                            ], 
+                            "HUMSS": [
+                                "Introduction to World Religion and Belief System", 
+                                "Discipline and Ideas in Social Sciences", 
+                                "Philippine Politics and Governance", 
+                                "Creative Writing", 
+                                "Discipline and Ideas in the Applied Social Sciences"
+                            ], 
+                            "ICT": [
+                                "Computer System Servicing 11", 
+                                "Computer System Servicing (Practical) 11"
+                            ], 
+                            "HE": [
+                                "Cookery 11", 
+                                "Bread and Pastry Production"
+                            ] 
+                        },
+                        "Grade 12": { 
+                            "Core": [
+                                "Personal Development", 
+                                "Oral Communication in Context", 
+                                "Understanding Culture, Society, and Politics", 
+                                "Pagsulat sa Filipino (Akademik)", 
+                                "Pagsulat sa Filipino (TekBok)", 
+                                "Practical Research 2", 
+                                "Contemporary Philippine Arts from the Regions", 
+                                "Physical Education", 
+                                "English for Academics and Professional Purposes", 
+                                "Inquiries, Investigation, and Immersion", 
+                                "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", 
+                                "Media Information and Literacy"
+                            ], 
+                            "STEM": [
+                                "General Physics 1", 
+                                "General Chemistry 2", 
+                                "Disaster Readiness and Risk Reduction", 
+                                "General Physics 2", 
+                                "Capstone"
+                            ], 
+                            "ABM": [
+                                "Fundamentals of Accountancy, Business, & Math 2", 
+                                "Physical Science", 
+                                "Business Finance", 
+                                "Business Ethics and Social Responsibility", 
+                                "Business Enterprise and Simulation"
+                            ], 
+                            "HUMSS": [
+                                "Creative Non-Fiction", 
+                                "Physical Science", 
+                                "Community, Engagement, Solidarity and Citizenship", 
+                                "Trends, Networks, and Critical Thinking", 
+                                "Culminating Activity"
+                            ], 
+                            "ICT": [
+                                "Computer Servicing System 12", 
+                                "Physical Science", 
+                                "Computer System Servicing 12", 
+                                "Computer System Servicing (Practical) 12"
+                            ], 
+                            "HE": [
+                                "Cookery 12", 
+                                "Physical Science", 
+                                "Food and Beverage Services"
+                            ] 
+                        }
                     };
+                    
                     let groups = {};
-                    for (const grade in data) { for (const strand in data[grade]) { groups[`${grade} - ${strand}`] = data[grade][strand]; } }
+                    for (const grade in data) { 
+                        for (const strand in data[grade]) { 
+                            groups[`${grade} - ${strand}`] = data[grade][strand]; 
+                        } 
+                    }
                     return groups;
                 },
 
                 triggerSync() {
                     localStorage.setItem('studyio_tutor_profile', JSON.stringify(this.profile));
+                    
                     clearTimeout(this.syncTimer);
+                    
                     this.syncTimer = setTimeout(() => {
                         const cleanProfileToSync = JSON.parse(JSON.stringify(this.profile));
-                        this.mqttClient.publish('studyio/system/profile_updates', JSON.stringify({ type: 'profile_update', profile: cleanProfileToSync }), { retain: true });
+                        
+                        this.mqttClient.publish('studyio/system/profile_updates', JSON.stringify({ 
+                            type: 'profile_update', 
+                            profile: cleanProfileToSync 
+                        }), { retain: true });
+                        
                         const newTopic = 'studyio/room/' + this.profile.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        
                         if (newTopic !== this.chatTopic) {
                             this.mqttClient.unsubscribe(this.chatTopic);
                             this.chatTopic = newTopic;
@@ -562,10 +718,37 @@
                     }, 500);
                 },
 
-                addSubject() { if (this.selectedSubjectToAdd !== '') { if (!this.profile.subjects.includes(this.selectedSubjectToAdd)) { this.profile.subjects.push(this.selectedSubjectToAdd); this.triggerSync(); } this.selectedSubjectToAdd = ''; } },
-                removeSubject(index) { this.profile.subjects.splice(index, 1); this.triggerSync(); },
-                addSchedule() { if (this.newScheduleDay !== '' && this.newScheduleTime.trim() !== '') { this.profile.schedule.push({ day: this.newScheduleDay, time: this.newScheduleTime.trim() }); this.newScheduleDay = ''; this.newScheduleTime = ''; this.triggerSync(); } },
-                removeSchedule(index) { this.profile.schedule.splice(index, 1); this.triggerSync(); }
+                addSubject() { 
+                    if (this.selectedSubjectToAdd !== '') { 
+                        if (!this.profile.subjects.includes(this.selectedSubjectToAdd)) { 
+                            this.profile.subjects.push(this.selectedSubjectToAdd); 
+                            this.triggerSync(); 
+                        } 
+                        this.selectedSubjectToAdd = ''; 
+                    } 
+                },
+                
+                removeSubject(index) { 
+                    this.profile.subjects.splice(index, 1); 
+                    this.triggerSync(); 
+                },
+                
+                addSchedule() { 
+                    if (this.newScheduleDay !== '' && this.newScheduleTime.trim() !== '') { 
+                        this.profile.schedule.push({ 
+                            day: this.newScheduleDay, 
+                            time: this.newScheduleTime.trim() 
+                        }); 
+                        this.newScheduleDay = ''; 
+                        this.newScheduleTime = ''; 
+                        this.triggerSync(); 
+                    } 
+                },
+                
+                removeSchedule(index) { 
+                    this.profile.schedule.splice(index, 1); 
+                    this.triggerSync(); 
+                }
             }
         }
     </script>

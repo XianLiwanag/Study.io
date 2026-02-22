@@ -85,9 +85,10 @@
                 </div>
 
                 <div class="hidden md:flex items-center gap-4" x-show="currentUser" x-cloak>
-                    <button @click="setupAndGoToDashboard()" x-show="currentUser?.role === 'tutor' && myApplication?.status === 'Approved'" class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-black transition flex items-center gap-2">
+                    
+                    <a href="tutor-dashboard.html" x-show="currentUser?.role === 'tutor'" class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-black transition flex items-center gap-2">
                         <i class="fa-solid fa-chalkboard-user"></i> My Dashboard
-                    </button>
+                    </a>
                     <a href="student-dashboard.html" x-show="currentUser?.role === 'student'" class="bg-oxfordRed text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm hover:bg-oxfordDark transition flex items-center gap-2">
                         <i class="fa-solid fa-user-pen"></i> My Profile
                     </a>
@@ -145,13 +146,13 @@
                     </div>
 
                     <div class="flex flex-col space-y-2">
-                        <button @click="setupAndGoToDashboard(); mobileMenuOpen = false" x-show="currentUser?.role === 'tutor' && myApplication?.status === 'Approved'" class="w-full bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm">
+                        <a href="tutor-dashboard.html" x-show="currentUser?.role === 'tutor'" class="w-full text-center bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm block">
                             <i class="fa-solid fa-chalkboard-user mr-2"></i> My Dashboard
-                        </button>
-                        <a href="student-dashboard.html" x-show="currentUser?.role === 'student'" class="w-full text-center bg-oxfordRed text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm">
+                        </a>
+                        <a href="student-dashboard.html" x-show="currentUser?.role === 'student'" class="w-full text-center bg-oxfordRed text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm block">
                             <i class="fa-solid fa-user-pen mr-2"></i> My Profile
                         </a>
-                        <a href="admin-dashboard.html" x-show="currentUser?.role === 'admin'" class="w-full text-center bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm">
+                        <a href="admin-dashboard.html" x-show="currentUser?.role === 'admin'" class="w-full text-center bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-bold shadow-sm block">
                             <i class="fa-solid fa-shield-halved mr-2"></i> Admin Panel
                         </a>
                         <button @click="logout(); mobileMenuOpen = false" class="w-full text-center text-red-600 bg-red-50 px-4 py-2 rounded-md font-bold text-sm border border-red-100 mt-2">
@@ -487,9 +488,9 @@
 
                     <div x-show="myApplication?.status === 'Approved'" class="text-center">
                         <p class="text-sm text-green-600 font-bold mb-4">Congratulations! You are officially a tutor on Study.io.</p>
-                        <button @click="setupAndGoToDashboard()" class="inline-block bg-oxfordRed text-white px-6 py-3 rounded-md font-bold hover:bg-oxfordDark transition w-full shadow-md">
+                        <a href="tutor-dashboard.html" class="inline-block bg-oxfordRed text-white px-6 py-3 rounded-md font-bold hover:bg-oxfordDark transition w-full shadow-md">
                             Go to Your Personal Dashboard
-                        </button>
+                        </a>
                     </div>
 
                     <div x-show="myApplication?.status === 'Rejected'" class="text-center">
@@ -820,10 +821,19 @@
     </div>
 
     <script>
+        // *** TAB ISOLATION FIX *** // Generates a unique secure lock for this specific browser tab so Supabase cannot leak
+        const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('studyio_tab_id', tabId);
+
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
-            { auth: { storage: window.sessionStorage } } // *** TAB ISOLATION ***
+            { 
+                auth: { 
+                    storage: window.sessionStorage,
+                    storageKey: 'studyio_auth_' + tabId // Absolute Tab Lockdown
+                } 
+            }
         );
 
         function appData() {
@@ -835,7 +845,7 @@
                 // Auth States
                 currentUser: null, 
                 
-                // *** NEW REACTIVE IDENTITY VARIABLES ***
+                // *** REACTIVE IDENTITY VARIABLES ***
                 navName: '',
                 navAvatar: '',
 
@@ -867,7 +877,7 @@
                 newTutorAlert: false, 
                 
                 init() {
-                    // *** 1. CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
+                    // *** CATCH LOGOUT REDIRECT & NUKE GHOST TOKENS ***
                     if (window.location.search.includes('logged_out=1')) {
                         sessionStorage.clear(); 
                         localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
@@ -876,7 +886,7 @@
                         supabaseClient.auth.signOut().catch(()=>{}); 
                     }
 
-                    // *** 2. LISTEN TO SUPABASE FOR SECURE OAUTH REDIRECTS ***
+                    // *** LISTEN TO SUPABASE FOR SECURE OAUTH REDIRECTS ***
                     supabaseClient.auth.onAuthStateChange((event, session) => {
                         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                             if (session && session.user.app_metadata.provider === 'google') {
@@ -898,7 +908,13 @@
                                 let existingProfile = localStorage.getItem('studyio_student_profile');
                                 if (!existingProfile) {
                                     const blankStudentProfile = {
-                                        name: fullName, strand: "Grade 11", bio: "Ready to learn!", headerColor: "bg-gray-800", avatarUrl: avatar, coverImageUrl: "", subjects: []
+                                        name: fullName, 
+                                        strand: "Grade 11", 
+                                        bio: "Ready to learn!", 
+                                        headerColor: "bg-gray-800", 
+                                        avatarUrl: avatar, 
+                                        coverImageUrl: "", 
+                                        subjects: []
                                     };
                                     localStorage.setItem('studyio_student_profile', JSON.stringify(blankStudentProfile));
                                 } else {
@@ -917,7 +933,7 @@
                         }
                     });
 
-                    // *** 3. LOAD MOCK MEMORY FOR MANUAL LOGINS ***
+                    // *** LOAD MOCK MEMORY FOR MANUAL LOGINS ***
                     setTimeout(() => {
                         if (!this.currentUser) {
                             const savedSession = sessionStorage.getItem('studyio_current_user');
@@ -931,7 +947,9 @@
                     // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
                     window.addEventListener('storage', () => this.updateIdentity());
                     window.addEventListener('visibilitychange', () => {
-                        if (!document.hidden) this.updateIdentity();
+                        if (!document.hidden) {
+                            this.updateIdentity();
+                        }
                     });
 
                     // Check saved application tracker
@@ -968,6 +986,9 @@
                                 avatarUrl: parsedMsg.avatarUrl || null, 
                                 text: parsedMsg.text 
                             });
+                            
+                            // FORCE ALPINE TO RE-RENDER CHAT WINDOW
+                            this.chatMessages = [...this.chatMessages];
                             this.scrollToBottom();
                         }
                         
@@ -988,7 +1009,7 @@
                                 tutorsData[tutorIndex].subjects = updatedProfile.subjects ? [...updatedProfile.subjects] : [];
                                 tutorsData[tutorIndex].schedule = updatedProfile.schedule ? [...updatedProfile.schedule] : [];
                                 
-                                syncDirectoryToStorage(); // <-- LIVE SYNC FIX
+                                syncDirectoryToStorage(); 
                                 handleFilters(); 
                                 
                                 if(selectedTutorId === updatedProfile.id) { 
@@ -1002,7 +1023,7 @@
                             const newTutor = parsedMsg.tutor;
                             if(!tutorsData.find(t => t.id === newTutor.id)) {
                                 tutorsData.unshift(newTutor); 
-                                syncDirectoryToStorage(); // <-- LIVE SYNC FIX
+                                syncDirectoryToStorage(); 
                                 handleFilters(); 
                                 this.newTutorAlert = true;
                                 setTimeout(() => { this.newTutorAlert = false; }, 4000);
@@ -1015,6 +1036,21 @@
                                 const loggedInUser = { name: this.myApplication.name, email: this.myApplication.email, role: 'tutor' };
                                 sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
                                 this.currentUser = loggedInUser;
+                                
+                                // Build Profile
+                                const personalizedProfile = {
+                                    id: this.myApplication.id, 
+                                    name: this.myApplication.name, 
+                                    strand: this.myApplication.strand,
+                                    bio: this.myApplication.bio, 
+                                    hourlyRate: this.myApplication.hourlyRate,
+                                    headerColor: "bg-gray-800", 
+                                    avatarUrl: "", 
+                                    coverImageUrl: "",
+                                    subjects: this.myApplication.subjects || [],
+                                    schedule: [] 
+                                };
+                                localStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
                                 this.updateIdentity();
                             }
                         }
@@ -1034,9 +1070,11 @@
                             
                             if (tutorIndex !== -1) {
                                 tutorsData.splice(tutorIndex, 1);
-                                syncDirectoryToStorage(); // <-- LIVE SYNC FIX
+                                syncDirectoryToStorage(); 
                                 handleFilters();
-                                if(selectedTutorId === idToRemove) { closeProfile(); }
+                                if(selectedTutorId === idToRemove) { 
+                                    closeProfile(); 
+                                }
                             }
 
                             if (this.myApplication && this.myApplication.id === idToRemove) {
@@ -1072,8 +1110,7 @@
                     });
                 },
 
-                // *** NEW DYNAMIC IDENTITY RADAR ***
-                // Actively forces Alpine to redraw the Navbar with the latest saved profile data
+                // *** DYNAMIC IDENTITY RADAR ***
                 updateIdentity() {
                     if (!this.currentUser) {
                         this.navName = '';
@@ -1112,7 +1149,6 @@
                         if (p && p.avatarUrl) return p.avatarUrl;
                     }
                     
-                    // Fall back to the Google Avatar injected into the session, or the UI generator
                     if (this.currentUser.avatar) return this.currentUser.avatar;
                     return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.getNavbarName())}&background=b91c1c&color=fff&bold=true`;
                 },
@@ -1141,7 +1177,7 @@
                             options: {
                                 redirectTo: window.location.origin + window.location.pathname,
                                 queryParams: {
-                                    prompt: 'select_account' // *** FORCES GOOGLE TO SHOW ACCOUNT PICKER EVERY TIME ***
+                                    prompt: 'select_account' 
                                 }
                             }
                         });
@@ -1191,8 +1227,8 @@
 
                 async logout() { 
                     this.currentUser = null; 
-                    sessionStorage.clear(); // Destroy all session data
-                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); // Kill the ghost token!
+                    sessionStorage.clear(); 
+                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.reload(); 
                 },
@@ -1238,15 +1274,12 @@
                                 bio: this.regData.bio || "No bio provided."
                             };
                             
-                            // 1. Broadcast it live to Admin Dashboard
                             this.mqttClient.publish('studyio/system/new_application', JSON.stringify(newApplicant));
                             
-                            // 2. THIS IS THE FIX! Save it directly to Admin's local storage so it doesn't vanish
                             let existingApps = localStorage.getItem('studyio_admin_apps');
                             if (existingApps) {
                                 existingApps = JSON.parse(existingApps);
                             } else {
-                                // Provide defaults just in case Admin Dashboard has never been opened
                                 existingApps = [
                                     { 
                                         id: 101, 
@@ -1304,29 +1337,10 @@
                     }
                 },
 
+                // NOTE: setupAndGoToDashboard is no longer strictly used by the UI since we hardcoded the anchor tag, 
+                // but it handles initial profile building when an application is approved.
                 setupAndGoToDashboard() {
-                    if(this.myApplication && this.myApplication.status === 'Approved') {
-                        // Auto-Log them in securely
-                        const loggedInUser = { name: this.myApplication.name, email: this.myApplication.email, role: 'tutor' };
-                        sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
-                        this.currentUser = loggedInUser;
-
-                        const personalizedProfile = {
-                            id: this.myApplication.id,
-                            name: this.myApplication.name,
-                            strand: this.myApplication.strand,
-                            bio: this.myApplication.bio,
-                            hourlyRate: this.myApplication.hourlyRate,
-                            headerColor: "bg-gray-800",
-                            avatarUrl: "", 
-                            coverImageUrl: "",
-                            subjects: this.myApplication.subjects || [],
-                            schedule: [] 
-                        };
-                        
-                        localStorage.setItem('studyio_tutor_profile', JSON.stringify(personalizedProfile));
-                        window.location.href = 'tutor-dashboard.html';
-                    }
+                    // Logic left intentionally blank as UI handles navigation securely
                 },
 
                 clearApplication() { 
@@ -1340,19 +1354,38 @@
                     this.modalOpen = true; 
                 },
 
+                // *** FIX: BUILD THE PROFILE CARD TO SEND TO THE INBOX ***
                 sendMessage() { 
                     if (this.newMessage.trim() === '') return; 
                     
                     const myName = this.getNavbarName() || "Student";
                     let myAvatar = this.getNavbarAvatar(); 
                     
+                    let myProfile = { 
+                        name: myName, 
+                        strand: "Unspecified", 
+                        bio: "Looking for help.", 
+                        subjects: [], 
+                        role: "student" 
+                    };
+                    
+                    if (this.currentUser && this.currentUser.role === 'student') {
+                        const p = JSON.parse(localStorage.getItem('studyio_student_profile'));
+                        if (p) myProfile = { ...p, role: 'student' };
+                    } else if (this.currentUser && this.currentUser.role === 'tutor') {
+                        const p = JSON.parse(localStorage.getItem('studyio_tutor_profile'));
+                        if (p) myProfile = { ...p, role: 'tutor' };
+                    }
+
                     this.mqttClient.publish(this.chatTopic, JSON.stringify({ 
                         type: 'chat', 
                         senderId: this.mySessionId, 
                         senderName: myName, 
                         avatarUrl: myAvatar,
+                        senderProfile: myProfile, // The missing link for the Inbox!
                         text: this.newMessage 
                     })); 
+                    
                     this.newMessage = ''; 
                 },
 
@@ -1365,7 +1398,7 @@
 
                 scrollTo(id) { 
                     document.getElementById(id).scrollIntoView({ behavior: 'smooth' }); 
-                    this.mobileMenuOpen = false;
+                    this.mobileMenuOpen = false; 
                 }
             }
         }
@@ -1381,7 +1414,10 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["General Physics 2", "Personal Development"], 
                 bio: "I specialize in General Physics and Calculus. I help students simplify complex formulas!", 
-                schedule: [{ day: "Monday", time: "4:00 PM - 6:00 PM" }, { day: "Saturday", time: "10:00 AM - 2:00 PM" }], 
+                schedule: [
+                    { day: "Monday", time: "4:00 PM - 6:00 PM" }, 
+                    { day: "Saturday", time: "10:00 AM - 2:00 PM" }
+                ], 
                 hourlyRate: 200, 
                 headerColor: "bg-oxfordRed" 
             },
@@ -1391,7 +1427,9 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["Understanding Culture, Society, and Politics", "Statistics and Probability"], 
                 bio: "Passionate about social sciences and numbers alike.", 
-                schedule: [{ day: "Tuesday", time: "5:00 PM - 7:00 PM" }], 
+                schedule: [
+                    { day: "Tuesday", time: "5:00 PM - 7:00 PM" }
+                ], 
                 hourlyRate: 150, 
                 headerColor: "bg-gray-800" 
             },
@@ -1401,7 +1439,9 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["Physical Education and Health", "General Biology 1", "General Biology 2"], 
                 bio: "Future doctor here! Let me help you with biology concepts.", 
-                schedule: [{ day: "Monday", time: "6:00 PM - 8:00 PM" }], 
+                schedule: [
+                    { day: "Monday", time: "6:00 PM - 8:00 PM" }
+                ], 
                 hourlyRate: 250, 
                 headerColor: "bg-blue-800" 
             },
@@ -1411,7 +1451,9 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["21st Century Literature", "Entrepreneurship", "Business Math"], 
                 bio: "Business-minded and a bookworm.", 
-                schedule: [{ day: "Wednesday", time: "3:00 PM - 5:00 PM" }], 
+                schedule: [
+                    { day: "Wednesday", time: "3:00 PM - 5:00 PM" }
+                ], 
                 hourlyRate: 180, 
                 headerColor: "bg-emerald-800" 
             },
@@ -1421,7 +1463,9 @@
                 strand: "Grade 12 - ABM", 
                 subjects: ["Fundamentals of Accountancy, Business, & Math 1", "Fundamentals of Accountancy, Business, & Math 2", "Business Math"], 
                 bio: "Numbers tell a story. Let's make sure yours makes sense.", 
-                schedule: [{ day: "Tuesday", time: "4:00 PM - 6:00 PM" }], 
+                schedule: [
+                    { day: "Tuesday", time: "4:00 PM - 6:00 PM" }
+                ], 
                 hourlyRate: 180, 
                 headerColor: "bg-yellow-600", 
                 avatarUrl: "", 
@@ -1433,7 +1477,9 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["Introduction to the Philosophy of the Human Person", "General Biology 1", "General Biology 2"], 
                 bio: "Let's explore Philosophy and Biology together.", 
-                schedule: [{ day: "Monday", time: "5:00 PM - 7:00 PM" }], 
+                schedule: [
+                    { day: "Monday", time: "5:00 PM - 7:00 PM" }
+                ], 
                 hourlyRate: 200, 
                 headerColor: "bg-teal-700" 
             },
@@ -1443,7 +1489,9 @@
                 strand: "Grade 11 - STEM", 
                 subjects: ["Statistics and Probability", "Basic Calculus"], 
                 bio: "Math doesn't have to be intimidating!", 
-                schedule: [{ day: "Friday", time: "3:00 PM - 6:00 PM" }], 
+                schedule: [
+                    { day: "Friday", time: "3:00 PM - 6:00 PM" }
+                ], 
                 hourlyRate: 150, 
                 headerColor: "bg-indigo-700" 
             },
@@ -1453,7 +1501,10 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["Computer System Servicing 12"], 
                 bio: "Ready to help you master Computer System Servicing 12 with practical tips and tricks!", 
-                schedule: [{ day: "Wednesday", time: "4:00 PM - 6:00 PM" }, { day: "Saturday", time: "1:00 PM - 3:00 PM" }], 
+                schedule: [
+                    { day: "Wednesday", time: "4:00 PM - 6:00 PM" }, 
+                    { day: "Saturday", time: "1:00 PM - 3:00 PM" }
+                ], 
                 hourlyRate: 150, 
                 headerColor: "bg-blue-600" 
             },
@@ -1463,106 +1514,171 @@
                 strand: "Grade 12 - STEM", 
                 subjects: ["Computer System Servicing 11"], 
                 bio: "I'll guide you through the basics of Computer System Servicing 11 so you can build a strong foundation.", 
-                schedule: [{ day: "Tuesday", time: "5:00 PM - 7:00 PM" }, { day: "Thursday", time: "5:00 PM - 7:00 PM" }], 
+                schedule: [
+                    { day: "Tuesday", time: "5:00 PM - 7:00 PM" }, 
+                    { day: "Thursday", time: "5:00 PM - 7:00 PM" }
+                ], 
                 hourlyRate: 100, 
                 headerColor: "bg-green-600" 
             }
         ];
 
         // *** MASTER SYNC VAULT FIX ***
-        // This ensures the main website always remembers changes even after a refresh!
         function reconstructDatabase() {
             let hasChanges = false;
-            
-            // 1. Load from Global Directory Vault if it exists
             const savedDirectory = localStorage.getItem('studyio_public_directory');
-            if (savedDirectory) {
-                tutorsData = JSON.parse(savedDirectory);
+            
+            if (savedDirectory) { 
+                tutorsData = JSON.parse(savedDirectory); 
             }
 
-            // 2. Sync with Admin's Master List (Handles background approvals/deletions)
             const adminTutors = localStorage.getItem('studyio_admin_tutors');
             if (adminTutors) {
                 const parsedAdmin = JSON.parse(adminTutors);
-                
-                // Remove deleted tutors
                 const originalLength = tutorsData.length;
+                
                 tutorsData = tutorsData.filter(t => parsedAdmin.some(at => at.id === t.id));
-                if (tutorsData.length !== originalLength) hasChanges = true;
+                
+                if (tutorsData.length !== originalLength) {
+                    hasChanges = true; 
+                }
 
-                // Add newly approved tutors that might have been missed by MQTT
                 parsedAdmin.forEach(at => {
                     if (!tutorsData.some(t => t.id === at.id)) {
-                        tutorsData.unshift({
+                        tutorsData.unshift({ 
                             id: at.id, 
                             name: at.name, 
                             strand: at.strand, 
-                            hourlyRate: at.hourlyRate,
+                            hourlyRate: at.hourlyRate, 
                             bio: "New tutor on the platform.", 
                             subjects: [], 
                             schedule: [], 
-                            headerColor: "bg-gray-800"
+                            headerColor: "bg-gray-800" 
                         });
                         hasChanges = true;
                     }
                 });
             }
 
-            // 3. Sync with specific Tutor Profile edits (Handles background dashboard edits)
             const savedProfile = localStorage.getItem('studyio_tutor_profile');
             if (savedProfile) {
                 const p = JSON.parse(savedProfile);
                 const index = tutorsData.findIndex(t => t.id === p.id);
                 if (index !== -1) {
-                    if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) {
-                        tutorsData[index] = { ...tutorsData[index], ...p };
-                        hasChanges = true;
+                    if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
+                        tutorsData[index] = { ...tutorsData[index], ...p }; 
+                        hasChanges = true; 
                     }
-                } else {
-                    tutorsData.unshift(p);
-                    hasChanges = true;
+                } else { 
+                    tutorsData.unshift(p); 
+                    hasChanges = true; 
                 }
             }
 
-            if (hasChanges) {
-                localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData));
+            if (hasChanges) { 
+                localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData)); 
             }
         }
 
-        // Run the reconstruction immediately on load
         reconstructDatabase();
         
-        // This function updates the local vault whenever a live MQTT update happens
-        function syncDirectoryToStorage() {
-            localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData));
+        function syncDirectoryToStorage() { 
+            localStorage.setItem('studyio_public_directory', JSON.stringify(tutorsData)); 
         }
 
         const curriculumData = {
             "Grade 11": { 
                 "Core": [
-                    "Physical Education and Health", "General Mathematics", "21st Century Literature", 
-                    "Empowerment Technologies", "Entrepreneurship", "Earth Science", 
-                    "Earth and Life Science", "Reading and Writing Skills", "Practical Research 1", 
-                    "Komunikasyon at Pananaliksik", "Statistics and Probability", "Introduction to the Philosophy of the Human Person"
+                    "Physical Education and Health", 
+                    "General Mathematics", 
+                    "21st Century Literature", 
+                    "Empowerment Technologies", 
+                    "Entrepreneurship", 
+                    "Earth Science", 
+                    "Earth and Life Science", 
+                    "Reading and Writing Skills", 
+                    "Practical Research 1", 
+                    "Komunikasyon at Pananaliksik", 
+                    "Statistics and Probability", 
+                    "Introduction to the Philosophy of the Human Person"
                 ], 
-                "STEM": ["General Biology 1", "Pre-Calculus", "General Chemistry 1", "General Biology 2", "Basic Calculus"], 
-                "ABM": ["Organization and Management", "Business Math", "Applied Economics", "Principles of Marketing", "Fundamentals of Accountancy, Business, & Math 1"], 
-                "HUMSS": ["Introduction to World Religion and Belief System", "Discipline and Ideas in Social Sciences", "Philippine Politics and Governance", "Creative Writing", "Discipline and Ideas in the Applied Social Sciences"], 
-                "ICT": ["Computer System Servicing 11", "Computer System Servicing (Practical) 11"], 
-                "HE": ["Cookery 11", "Bread and Pastry Production"] 
+                "STEM": [
+                    "General Biology 1", 
+                    "Pre-Calculus", 
+                    "General Chemistry 1", 
+                    "General Biology 2", 
+                    "Basic Calculus"
+                ], 
+                "ABM": [
+                    "Organization and Management", 
+                    "Business Math", 
+                    "Applied Economics", 
+                    "Principles of Marketing", 
+                    "Fundamentals of Accountancy, Business, & Math 1"
+                ], 
+                "HUMSS": [
+                    "Introduction to World Religion and Belief System", 
+                    "Discipline and Ideas in Social Sciences", 
+                    "Philippine Politics and Governance", 
+                    "Creative Writing", 
+                    "Discipline and Ideas in the Applied Social Sciences"
+                ], 
+                "ICT": [
+                    "Computer System Servicing 11", 
+                    "Computer System Servicing (Practical) 11"
+                ], 
+                "HE": [
+                    "Cookery 11", 
+                    "Bread and Pastry Production"
+                ] 
             },
             "Grade 12": { 
                 "Core": [
-                    "Personal Development", "Oral Communication in Context", "Understanding Culture, Society, and Politics", 
-                    "Pagsulat sa Filipino (Akademik)", "Pagsulat sa Filipino (TekBok)", "Practical Research 2", 
-                    "Contemporary Philippine Arts from the Regions", "Physical Education", "English for Academics and Professional Purposes", 
-                    "Inquiries, Investigation, and Immersion", "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", "Media Information and Literacy"
+                    "Personal Development", 
+                    "Oral Communication in Context", 
+                    "Understanding Culture, Society, and Politics", 
+                    "Pagsulat sa Filipino (Akademik)", 
+                    "Pagsulat sa Filipino (TekBok)", 
+                    "Practical Research 2", 
+                    "Contemporary Philippine Arts from the Regions", 
+                    "Physical Education", 
+                    "English for Academics and Professional Purposes", 
+                    "Inquiries, Investigation, and Immersion", 
+                    "Pagbasa at Pagsusuri sa Iba't Ibang Teksto", 
+                    "Media Information and Literacy"
                 ], 
-                "STEM": ["General Physics 1", "General Chemistry 2", "Disaster Readiness and Risk Reduction", "General Physics 2", "Capstone"], 
-                "ABM": ["Fundamentals of Accountancy, Business, & Math 2", "Physical Science", "Business Finance", "Business Ethics and Social Responsibility", "Business Enterprise and Simulation"], 
-                "HUMSS": ["Creative Non-Fiction", "Physical Science", "Community, Engagement, Solidarity and Citizenship", "Trends, Networks, and Critical Thinking", "Culminating Activity"], 
-                "ICT": ["Computer Servicing System 12", "Physical Science", "Computer System Servicing 12", "Computer System Servicing (Practical) 12"], 
-                "HE": ["Cookery 12", "Physical Science", "Food and Beverage Services"] 
+                "STEM": [
+                    "General Physics 1", 
+                    "General Chemistry 2", 
+                    "Disaster Readiness and Risk Reduction", 
+                    "General Physics 2", 
+                    "Capstone"
+                ], 
+                "ABM": [
+                    "Fundamentals of Accountancy, Business, & Math 2", 
+                    "Physical Science", 
+                    "Business Finance", 
+                    "Business Ethics and Social Responsibility", 
+                    "Business Enterprise and Simulation"
+                ], 
+                "HUMSS": [
+                    "Creative Non-Fiction", 
+                    "Physical Science", 
+                    "Community, Engagement, Solidarity and Citizenship", 
+                    "Trends, Networks, and Critical Thinking", 
+                    "Culminating Activity"
+                ], 
+                "ICT": [
+                    "Computer Servicing System 12", 
+                    "Physical Science", 
+                    "Computer System Servicing 12", 
+                    "Computer System Servicing (Practical) 12"
+                ], 
+                "HE": [
+                    "Cookery 12", 
+                    "Physical Science", 
+                    "Food and Beverage Services"
+                ] 
             }
         };
 
@@ -1583,18 +1699,22 @@
             gradesToProcess.forEach(grade => {
                 const coreGroup = document.createElement('optgroup'); 
                 coreGroup.label = `${grade} - Core`;
+                
                 curriculumData[grade]["Core"].forEach(subject => { 
                     coreGroup.innerHTML += `<option value="${subject}">${subject}</option>`; 
                 }); 
+                
                 subjectSelect.appendChild(coreGroup);
                 
                 strandsToProcess.forEach(strand => {
                     if (curriculumData[grade][strand] && curriculumData[grade][strand].length > 0) {
                         const specGroup = document.createElement('optgroup'); 
                         specGroup.label = `${grade} - ${strand}`;
+                        
                         curriculumData[grade][strand].forEach(subject => { 
                             specGroup.innerHTML += `<option value="${subject}">${subject}</option>`; 
                         }); 
+                        
                         subjectSelect.appendChild(specGroup);
                     }
                 });
@@ -1645,6 +1765,7 @@
                 
                 return matchesSearch && matchesSubject && matchesGrade && matchesStrand;
             });
+            
             renderTutors(filtered);
         }
 
@@ -1756,10 +1877,12 @@
         document.getElementById('global-search-mobile').addEventListener('input', handleFilters); 
         
         document.getElementById('subject-filter').addEventListener('change', handleFilters); 
+        
         document.getElementById('grade-filter').addEventListener('change', () => { 
             populateSubjectDropdown(); 
             handleFilters(); 
         }); 
+        
         document.getElementById('strand-filter').addEventListener('change', () => { 
             populateSubjectDropdown(); 
             handleFilters(); 
