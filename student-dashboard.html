@@ -259,24 +259,18 @@
                 ],
 
                 init() {
+                    // Check isolated tab memory
                     const savedSession = sessionStorage.getItem('studyio_current_user');
                     if (savedSession) { 
                         this.currentUser = JSON.parse(savedSession); 
                     }
 
-                    // *** GOOGLE SYNC FIX ***
-                    // Pull student profile settings. If it has no avatar but the google login gave us one, inject it!
+                    // Pull stored profile edits
                     const savedProfile = localStorage.getItem('studyio_student_profile');
                     if (savedProfile) { 
                         this.profile = JSON.parse(savedProfile); 
-                        if (!this.profile.avatarUrl && this.currentUser && this.currentUser.avatar) {
-                            this.profile.avatarUrl = this.currentUser.avatar;
-                            this.saveProfile();
-                        }
                     } else if (this.currentUser) {
                         this.profile.name = this.currentUser.name;
-                        if (this.currentUser.avatar) this.profile.avatarUrl = this.currentUser.avatar;
-                        this.saveProfile();
                     }
 
                     window.addEventListener('pageshow', (event) => {
@@ -296,9 +290,18 @@
                     window.location.href = 'index.html?logged_out=1';
                 },
 
+                // *** GOOGLE AVATAR SYNC LOGIC FIX ***
                 get finalAvatarUrl() {
-                    if (this.profile.avatarUrl && this.profile.avatarUrl.trim() !== "") { return this.profile.avatarUrl; }
-                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.profile.name || 'Student')}&background=random&color=fff&bold=true`;
+                    // 1. If user typed an image URL or clicked a Quick Select avatar, use it!
+                    if (this.profile.avatarUrl && this.profile.avatarUrl.trim() !== "") { 
+                        return this.profile.avatarUrl; 
+                    }
+                    // 2. If no custom image is set, check if Google handed us a profile picture!
+                    if (this.currentUser && this.currentUser.avatar) { 
+                        return this.currentUser.avatar; 
+                    }
+                    // 3. If no image exists anywhere, generate a beautiful red initial icon (matching Home Page exactly!)
+                    return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.profile.name || 'Student')}&background=b91c1c&color=fff&bold=true`;
                 },
 
                 get groupedSubjects() {
