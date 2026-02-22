@@ -79,7 +79,7 @@
             <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2">
                 <i class="fa-solid fa-user-pen"></i> My Profile
             </button>
-            <button @click="activeTab = 'inbox'" :class="activeTab === 'inbox' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2 relative">
+            <button @click="activeTab = 'inbox'; scrollToBottom();" :class="activeTab === 'inbox' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2 relative">
                 <i class="fa-solid fa-inbox"></i> Tutor Inbox
                 <span x-show="contacts.length > 0" class="absolute top-3 -right-3 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
             </button>
@@ -299,18 +299,23 @@
                             <template x-for="(msg, index) in activeChatHistory" :key="index">
                                 <div class="w-full flex flex-col">
                                     
+                                    <div x-show="msg.senderId === 'system_alert'" class="self-center bg-blue-50 text-blue-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-blue-200 my-1 font-medium">
+                                        <span x-text="msg.text"></span>
+                                    </div>
+
                                     <div x-show="msg.senderId === mySessionId" class="self-end flex flex-col w-full max-w-[85%] items-end">
                                         <div class="flex gap-2 w-full justify-end">
                                             <div class="bg-oxfordRed text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
                                     
-                                    <div x-show="msg.senderId !== mySessionId" class="self-start flex flex-col w-full max-w-[85%]">
+                                    <div x-show="msg.senderId !== mySessionId && msg.senderId !== 'system_alert'" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
                                             <img :src="msg.avatarUrl" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
                                             <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
+
                                 </div>
                             </template>
                         </div>
@@ -413,28 +418,44 @@
                     const savedMessages = localStorage.getItem('studyio_student_inbox_history_' + this.mySessionId);
                     if (savedMessages) {
                         this.allMessages = JSON.parse(savedMessages);
-                    } else {
-                        // Generate a welcome message to show off the UI if inbox is empty
-                        const welcomeMsg = {
-                            type: 'chat',
-                            senderId: 'admin_team',
-                            targetContactId: this.mySessionId,
-                            senderName: 'Study.io Team',
-                            avatarUrl: 'https://ui-avatars.com/api/?name=Study.io&background=b91c1c&color=fff&bold=true',
-                            senderProfile: { 
-                                name: 'Study.io Support', 
-                                strand: 'Platform Administrators', 
-                                bio: 'We ensure safe and fast matchmaking!', 
-                                subjects: ['Platform Support'], 
-                                hourlyRate: 0,
-                                role: 'system'
-                            },
-                            text: 'Welcome to your dedicated Student Inbox! When you message tutors from the home page, their replies will safely appear right here.'
-                        };
-                        this.allMessages = [welcomeMsg];
-                        localStorage.setItem('studyio_student_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
-                    }
+                    } 
                     
+                    // *** FIX: THE HANDOFF CATCHER ***
+                    // If the user clicked "Message" on the Home Page, we catch the target data here!
+                    const pendingChat = localStorage.getItem('studyio_pending_chat_target');
+                    if (pendingChat) {
+                        const targetTutor = JSON.parse(pendingChat);
+                        
+                        // Ensure this tutor is added to our history so they show up in the contacts list
+                        const existingMessages = this.allMessages.filter(msg => msg.senderId === targetTutor.id || msg.targetContactId === targetTutor.id);
+                        
+                        if (existingMessages.length === 0) {
+                            const connectionMsg = {
+                                type: 'chat',
+                                senderId: 'system_alert',
+                                targetContactId: this.mySessionId,
+                                senderName: 'System',
+                                avatarUrl: '',
+                                senderProfile: targetTutor, // We sneak the tutor's profile into the contact list here
+                                text: `You connected with ${targetTutor.name}. Send a message to start chatting!`
+                            };
+                            this.allMessages.push(connectionMsg);
+                            localStorage.setItem('studyio_student_inbox_history_' + this.mySessionId, JSON.stringify(this.allMessages));
+                        }
+
+                        // Instantly switch to Inbox tab and select the Tutor
+                        this.activeTab = 'inbox';
+                        this.rebuildContacts();
+                        
+                        setTimeout(() => {
+                            const contactToSelect = this.contacts.find(c => c.id === targetTutor.id) || targetTutor;
+                            this.selectContact(contactToSelect);
+                        }, 100);
+
+                        // Erase the handoff so it doesn't happen again on refresh
+                        localStorage.removeItem('studyio_pending_chat_target');
+                    }
+
                     this.rebuildContacts();
 
                     // *** CROSS-TAB RADAR FOR INSTANT CHAT SYNC ***
@@ -506,10 +527,10 @@
                     this.allMessages.forEach(msg => {
                         // Create contact cards for anyone who isn't the student themselves
                         if (msg.senderId !== this.mySessionId && msg.senderProfile) {
-                            uniqueContacts[msg.senderId] = {
-                                id: msg.senderId,
+                            uniqueContacts[msg.senderProfile.name || msg.senderId] = {
+                                id: msg.senderProfile.name || msg.senderId,
                                 name: msg.senderProfile.name || msg.senderName,
-                                avatarUrl: msg.avatarUrl,
+                                avatarUrl: msg.avatarUrl || msg.senderProfile.avatarUrl,
                                 strand: msg.senderProfile.strand || 'Tutor',
                                 bio: msg.senderProfile.bio || '',
                                 subjects: msg.senderProfile.subjects || [],
@@ -531,7 +552,9 @@
                     if (!this.activeContact) return [];
                     return this.allMessages.filter(msg => 
                         msg.senderId === this.activeContact.id || 
-                        (msg.senderId === this.mySessionId && msg.targetContactId === this.activeContact.id)
+                        msg.senderProfile?.name === this.activeContact.name ||
+                        (msg.senderId === this.mySessionId && msg.targetContactId === this.activeContact.id) ||
+                        (msg.senderId === 'system_alert' && msg.senderProfile?.name === this.activeContact.name)
                     );
                 },
 
