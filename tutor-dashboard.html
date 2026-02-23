@@ -498,7 +498,7 @@
                             // 1. Prevent Echo (My own messages)
                             if (parsedMsg.senderId === this.mySessionId) return;
 
-                            // 2. Prevent Duplicates
+                            // 2. *** FIX: THE ANTI-DUPLICATE RULE RESTORED ***
                             const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
                             if (isDuplicate) return;
 
