@@ -541,7 +541,8 @@
                         this.saveState(); 
                         this.showToast(`Application for ${applicant.name} was rejected.`, 'error');
                         
-                        this.mqttClient.publish('studyio/system/application_rejected', JSON.stringify({ id: id }), { retain: true });
+                        // Retain removed here
+                        this.mqttClient.publish('studyio/system/application_rejected', JSON.stringify({ id: id }));
                     }
                 },
 
@@ -550,7 +551,8 @@
                         this.activeTutors = this.activeTutors.filter(t => t.id !== id);
                         this.saveState(); 
                         
-                        this.mqttClient.publish('studyio/system/delete_tutor', JSON.stringify({ type: 'delete_tutor', id: id }), { retain: true });
+                        // Retain removed here
+                        this.mqttClient.publish('studyio/system/delete_tutor', JSON.stringify({ type: 'delete_tutor', id: id }));
                         this.showToast("Tutor successfully removed from platform.", "error");
                     }
                 },
