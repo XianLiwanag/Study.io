@@ -15,15 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
-        // PREVENT FLASH OF UNSTYLED CONTENT (Dark Mode)
-        if (localStorage.getItem('studyio_theme') === 'dark' || (!('studyio_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: { 
@@ -42,13 +34,12 @@
         .chat-scroll::-webkit-scrollbar { width: 6px; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        .dark .chat-scroll::-webkit-scrollbar-thumb { background-color: #4b5563; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100 transition-colors duration-300" x-data="studentApp()">
+<body class="bg-gray-50 font-sans text-gray-800" x-data="studentApp()">
 
-    <nav class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40 transition-colors duration-300 border-b border-transparent dark:border-gray-700">
+    <nav class="bg-white shadow-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 sm:h-20 items-center">
             
             <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" onclick="window.location.href='index.html'">
@@ -57,49 +48,40 @@
                 </div>
                 <div>
                     <h1 class="text-lg sm:text-2xl font-bold text-oxfordRed leading-tight">Study.io</h1>
-                    <p class="text-[9px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest leading-tight" x-text="$store.global.t('dash_student_portal')">Student Portal</p>
+                    <p class="text-[9px] sm:text-xs text-gray-500 uppercase tracking-widest leading-tight">Student Portal</p>
                 </div>
             </div>
             
             <div class="flex items-center gap-2 sm:gap-4">
                 
-                <a href="index.html" class="text-sm text-gray-600 dark:text-gray-300 hover:text-oxfordRed dark:hover:text-red-400 transition font-medium flex items-center gap-1.5 p-2 sm:p-0">
+                <a href="index.html" class="text-sm text-gray-600 hover:text-oxfordRed transition font-medium flex items-center gap-1.5 p-2 sm:p-0">
                     <i class="fa-solid fa-house text-lg sm:text-sm"></i> 
-                    <span class="hidden sm:inline" x-text="$store.global.t('nav_home')">Home</span>
+                    <span class="hidden sm:inline">Home</span>
                 </a>
                 
-                <div class="h-6 sm:h-8 w-px bg-gray-300 dark:bg-gray-600 mx-1 sm:mx-2 hidden sm:block transition-colors"></div>
+                <div class="h-6 sm:h-8 w-px bg-gray-300 mx-1 sm:mx-2 hidden sm:block"></div>
                 
-                <div class="hidden sm:flex items-center gap-2 border-r border-gray-300 dark:border-gray-600 pr-3 mr-1 transition-colors">
-                    <button @click="$store.global.toggleLang()" class="text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-oxfordRed dark:hover:text-white transition px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                        <span x-text="$store.global.lang === 'en' ? 'EN' : 'TL'"></span>
-                    </button>
-                    <button @click="$store.global.toggleTheme()" class="text-gray-600 dark:text-gray-300 hover:text-oxfordRed dark:hover:text-yellow-400 transition p-2 rounded-full">
-                        <i class="fa-solid" :class="$store.global.theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-2 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-gray-200 dark:border-gray-600 ml-1 sm:ml-2 transition-colors">
-                    <img :src="finalAvatarUrl" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-gray-300 dark:border-gray-500 object-cover bg-white">
+                <div class="flex items-center gap-2 text-gray-700 bg-gray-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-gray-200 ml-1 sm:ml-2">
+                    <img :src="finalAvatarUrl" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-gray-300 object-cover bg-white">
                     <span class="font-semibold text-xs sm:text-sm hidden sm:inline truncate max-w-[100px]" x-text="profile.name"></span>
                 </div>
 
-                <button @click="logout()" class="text-sm text-red-600 sm:text-gray-500 dark:sm:text-gray-400 hover:text-white sm:hover:text-oxfordRed dark:sm:hover:text-red-400 hover:bg-red-600 sm:hover:bg-red-50 dark:sm:hover:bg-gray-700 transition font-medium ml-1 sm:ml-2 sm:border border-gray-300 dark:border-gray-600 px-2 sm:px-3 py-1.5 rounded-md shadow-sm flex items-center gap-1.5">
+                <button @click="logout()" class="text-sm text-red-600 sm:text-gray-500 hover:text-white sm:hover:text-oxfordRed hover:bg-red-600 sm:hover:bg-red-50 transition font-medium ml-1 sm:ml-2 sm:border border-gray-300 px-2 sm:px-3 py-1.5 rounded-md shadow-sm flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-right-from-bracket text-lg sm:text-sm"></i> 
-                    <span class="hidden sm:inline" x-text="$store.global.t('nav_logout')">Log Out</span>
+                    <span class="hidden sm:inline">Log Out</span>
                 </button>
             </div>
         </div>
     </nav>
 
-    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-16 sm:top-20 z-30 transition-colors">
+    <div class="bg-white border-b border-gray-200 sticky top-16 sm:top-20 z-30">
         <div class="max-w-7xl mx-auto px-4 flex gap-6">
-            <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'border-oxfordRed text-oxfordRed dark:text-red-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2">
-                <i class="fa-solid fa-user-pen"></i> <span x-text="$store.global.t('dash_profile_tab')">My Profile</span>
+            <button @click="activeTab = 'profile'" :class="activeTab === 'profile' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2">
+                <i class="fa-solid fa-user-pen"></i> My Profile
             </button>
-            <button @click="activeTab = 'inbox'; scrollToBottom();" :class="activeTab === 'inbox' ? 'border-oxfordRed text-oxfordRed dark:text-red-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2 relative">
-                <i class="fa-solid fa-inbox"></i> <span x-text="$store.global.t('dash_inbox_tab')">Tutor Inbox</span>
-                <span x-show="contacts.length > 0" class="absolute top-3 -right-3 w-2.5 h-2.5 bg-red-500 rounded-full border border-white dark:border-gray-800"></span>
+            <button @click="activeTab = 'inbox'; scrollToBottom();" :class="activeTab === 'inbox' ? 'border-oxfordRed text-oxfordRed' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="py-4 font-bold text-sm sm:text-base border-b-2 transition flex items-center gap-2 relative">
+                <i class="fa-solid fa-inbox"></i> Tutor Inbox
+                <span x-show="contacts.length > 0" class="absolute top-3 -right-3 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
             </button>
         </div>
     </div>
@@ -107,11 +89,11 @@
     <main x-cloak x-show="activeTab === 'profile'" class="max-w-7xl mx-auto px-4 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 min-h-[70vh]">
         
         <div class="lg:col-span-1">
-            <h3 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                <i class="fa-regular fa-address-card text-oxfordRed dark:text-red-400"></i> <span x-text="$store.global.t('student_card')">My Student Card</span>
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fa-regular fa-address-card text-oxfordRed"></i> My Student Card
             </h3>
             
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 lg:sticky lg:top-40 transition-colors">
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 lg:sticky lg:top-40">
                 
                 <div :class="profile.coverImageUrl ? '' : profile.headerColor" 
                      :style="profile.coverImageUrl ? `background-image: url('${profile.coverImageUrl}'); background-size: cover; background-position: center;` : ''" 
@@ -120,31 +102,31 @@
                 
                 <div class="px-5 sm:px-6 pb-5 sm:pb-6 relative">
                     <div class="flex justify-between items-end -mt-10 sm:-mt-12 mb-4">
-                        <img :src="finalAvatarUrl" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white dark:border-gray-800 shadow-md bg-white dark:bg-gray-700 object-cover">
+                        <img :src="finalAvatarUrl" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white shadow-md bg-white object-cover">
                     </div>
                     
-                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white leading-tight" x-text="profile.name || 'Student Name'"></h2>
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 leading-tight" x-text="profile.name || 'Student Name'"></h2>
                     
-                    <div class="flex flex-wrap items-center text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs mt-1.5 sm:mt-2 mb-4 gap-2">
-                        <span class="font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-600 transition-colors">
-                            <i class="fa-solid fa-school text-oxfordRed dark:text-red-400 mr-1"></i> <span x-text="profile.strand || 'Not Specified'"></span>
+                    <div class="flex flex-wrap items-center text-gray-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2 mb-4 gap-2">
+                        <span class="font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
+                            <i class="fa-solid fa-school text-oxfordRed mr-1"></i> <span x-text="profile.strand || 'Not Specified'"></span>
                         </span>
                     </div>
                     
-                    <h3 class="font-bold text-gray-800 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-1 mb-2 text-xs sm:text-sm" x-text="$store.global.t('about_me')">About Me</h3>
-                    <p class="text-gray-600 dark:text-gray-300 text-xs sm:text-sm leading-relaxed mb-4 whitespace-pre-wrap" x-text="profile.bio || $store.global.t('bio_placeholder')"></p>
+                    <h3 class="font-bold text-gray-800 border-b border-gray-200 pb-1 mb-2 text-xs sm:text-sm">About Me</h3>
+                    <p class="text-gray-600 text-xs sm:text-sm leading-relaxed mb-4 whitespace-pre-wrap" x-text="profile.bio || 'Write a little about yourself...'"></p>
                     
-                    <div class="bg-red-50 dark:bg-red-900/20 p-3 sm:p-4 rounded-xl border border-red-100 dark:border-red-900 shadow-sm mt-5 sm:mt-6 transition-colors">
-                        <h3 class="font-bold text-oxfordRed dark:text-red-400 mb-2 sm:mb-3 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2">
-                            <i class="fa-solid fa-book-open"></i> <span x-text="$store.global.t('subjects_help')">Subjects I Need Help With</span>
+                    <div class="bg-red-50 p-3 sm:p-4 rounded-xl border border-red-100 shadow-sm mt-5 sm:mt-6">
+                        <h3 class="font-bold text-oxfordRed mb-2 sm:mb-3 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2">
+                            <i class="fa-solid fa-book-open"></i> Subjects I Need Help With
                         </h3>
                         <div class="flex flex-wrap gap-1.5 sm:gap-2">
                             <template x-for="sub in profile.subjects">
-                                <span class="text-[10px] sm:text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-600 shadow-sm transition-colors">
+                                <span class="text-[10px] sm:text-xs bg-white text-gray-700 px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
                                     <span x-text="sub"></span>
                                 </span>
                             </template>
-                            <span x-show="profile.subjects.length === 0" class="text-xs text-gray-400 dark:text-gray-500 italic" x-text="$store.global.t('no_subjects')">No subjects added yet.</span>
+                            <span x-show="profile.subjects.length === 0" class="text-xs text-gray-400 italic">No subjects added yet.</span>
                         </div>
                     </div>
                 </div>
@@ -152,30 +134,30 @@
         </div>
 
         <div class="lg:col-span-2">
-            <div class="bg-white dark:bg-gray-800 p-5 sm:p-8 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 gap-2">
+            <div class="bg-white p-5 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 sm:mb-6 border-b border-gray-100 pb-4 gap-2">
                     <div>
-                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white" x-text="$store.global.t('edit_profile')">Edit Profile Settings</h2>
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400" x-text="$store.global.t('edit_desc')">Personalize your account. Tutors will see this when you message them!</p>
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Edit Profile Settings</h2>
+                        <p class="text-xs sm:text-sm text-gray-500">Personalize your account. Tutors will see this when you message them!</p>
                     </div>
-                    <div class="text-[10px] sm:text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded border border-green-200 dark:border-green-800 self-start sm:self-auto inline-flex items-center gap-1 transition-colors">
-                        <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> <span x-text="$store.global.t('auto_saving')">Auto-Saving</span>
+                    <div class="text-[10px] sm:text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 self-start sm:self-auto inline-flex items-center gap-1">
+                        <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Auto-Saving
                     </div>
                 </div>
                 
                 <div class="space-y-5 sm:space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div>
-                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1" x-text="$store.global.t('form_name')">Full Name</label>
-                            <input type="text" x-model="profile.name" @input="saveProfile()" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                            <input type="text" x-model="profile.name" @input="saveProfile()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
                         </div>
                         <div>
-                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1" x-text="$store.global.t('form_grade')">Grade & Strand</label>
-                            <input type="text" x-model="profile.strand" @input="saveProfile()" placeholder="e.g. Grade 11 - STEM" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Grade & Strand</label>
+                            <input type="text" x-model="profile.strand" @input="saveProfile()" placeholder="e.g. Grade 11 - STEM" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1" x-text="$store.global.t('form_theme')">Default Theme Color</label>
-                            <select x-model="profile.headerColor" @change="saveProfile()" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Default Theme Color</label>
+                            <select x-model="profile.headerColor" @change="saveProfile()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm bg-white text-sm">
                                 <option value="bg-gray-800">Slate Dark (Default)</option>
                                 <option value="bg-oxfordRed">Oxford Red</option>
                                 <option value="bg-blue-600">Ocean Blue</option>
@@ -185,34 +167,34 @@
                         </div>
                     </div>
 
-                    <div class="bg-gray-50 dark:bg-gray-700 p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-600 transition-colors">
+                    <div class="bg-gray-50 p-4 sm:p-5 rounded-xl border border-gray-200">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                             <div>
-                                <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1" x-text="$store.global.t('form_avatar')">Profile Picture (URL)</label>
-                                <input type="text" x-model="profile.avatarUrl" @input="saveProfile()" placeholder="Paste image link here..." class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none text-xs sm:text-sm transition shadow-sm">
+                                <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Profile Picture (URL)</label>
+                                <input type="text" x-model="profile.avatarUrl" @input="saveProfile()" placeholder="Paste image link here..." class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none text-xs sm:text-sm transition shadow-sm">
                                 
                                 <div class="mt-3">
-                                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider" x-text="$store.global.t('quick_avatars')">Quick Select Avatars</p>
+                                    <p class="text-[10px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Quick Select Avatars</p>
                                     <div class="flex gap-2">
                                         <template x-for="img in defaultAvatars">
-                                            <img :src="img" @click="profile.avatarUrl = img; saveProfile()" class="w-8 h-8 rounded-full cursor-pointer hover:ring-2 hover:ring-oxfordRed border border-gray-300 dark:border-gray-500 object-cover bg-white dark:bg-gray-600 transition-transform hover:scale-110">
+                                            <img :src="img" @click="profile.avatarUrl = img; saveProfile()" class="w-8 h-8 rounded-full cursor-pointer hover:ring-2 hover:ring-oxfordRed border border-gray-300 object-cover bg-white transition-transform hover:scale-110">
                                         </template>
-                                        <button @click="profile.avatarUrl = ''; saveProfile()" class="w-8 h-8 rounded-full cursor-pointer border border-gray-300 dark:border-gray-500 bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors" title="Clear Avatar"><i class="fa-solid fa-eraser text-xs text-gray-500 dark:text-gray-400"></i></button>
+                                        <button @click="profile.avatarUrl = ''; saveProfile()" class="w-8 h-8 rounded-full cursor-pointer border border-gray-300 bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors" title="Clear Avatar"><i class="fa-solid fa-eraser text-xs text-gray-500"></i></button>
                                     </div>
                                 </div>
                             </div>
                             
                             <div>
-                                <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1" x-text="$store.global.t('form_cover')">Cover Photo (URL)</label>
-                                <input type="text" x-model="profile.coverImageUrl" @input="saveProfile()" placeholder="Paste image link here..." class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none text-xs sm:text-sm transition shadow-sm">
+                                <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Cover Photo (URL)</label>
+                                <input type="text" x-model="profile.coverImageUrl" @input="saveProfile()" placeholder="Paste image link here..." class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none text-xs sm:text-sm transition shadow-sm">
                                 
                                 <div class="mt-3">
-                                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider" x-text="$store.global.t('quick_covers')">Quick Select Covers</p>
+                                    <p class="text-[10px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Quick Select Covers</p>
                                     <div class="flex gap-2">
                                         <template x-for="img in defaultCovers">
-                                            <div @click="profile.coverImageUrl = img; saveProfile()" class="w-12 h-8 rounded cursor-pointer hover:ring-2 hover:ring-oxfordRed border border-gray-300 dark:border-gray-500 bg-cover bg-center transition-transform hover:scale-105" :style="`background-image: url('${img}')`"></div>
+                                            <div @click="profile.coverImageUrl = img; saveProfile()" class="w-12 h-8 rounded cursor-pointer hover:ring-2 hover:ring-oxfordRed border border-gray-300 bg-cover bg-center transition-transform hover:scale-105" :style="`background-image: url('${img}')`"></div>
                                         </template>
-                                        <button @click="profile.coverImageUrl = ''; saveProfile()" class="w-12 h-8 rounded cursor-pointer border border-gray-300 dark:border-gray-500 bg-gray-200 dark:bg-gray-600 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors" title="Clear Cover"><i class="fa-solid fa-eraser text-xs text-gray-500 dark:text-gray-400"></i></button>
+                                        <button @click="profile.coverImageUrl = ''; saveProfile()" class="w-12 h-8 rounded cursor-pointer border border-gray-300 bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors" title="Clear Cover"><i class="fa-solid fa-eraser text-xs text-gray-500"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -220,15 +202,15 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1" x-text="$store.global.t('form_bio')">Short Bio</label>
-                        <textarea x-model="profile.bio" @input="saveProfile()" placeholder="Tell tutors a bit about your learning style..." rows="3" class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm"></textarea>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Short Bio</label>
+                        <textarea x-model="profile.bio" @input="saveProfile()" placeholder="Tell tutors a bit about your learning style..." rows="3" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm"></textarea>
                     </div>
 
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-5 sm:pt-6">
-                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" x-text="$store.global.t('subjects_help')">Subjects I Need Help With</label>
+                    <div class="border-t border-gray-200 pt-5 sm:pt-6">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Subjects I Need Help With</label>
                         <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
-                            <select x-model="selectedSubjectToAdd" class="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
-                                <option value="" x-text="$store.global.t('select_subject')">-- Select a subject to add --</option>
+                            <select x-model="selectedSubjectToAdd" class="flex-1 border border-gray-300 rounded-md py-2.5 px-3 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm bg-white text-sm">
+                                <option value="">-- Select a subject to add --</option>
                                 <template x-for="(subjects, category) in groupedSubjects" :key="category">
                                     <optgroup :label="category">
                                         <template x-for="sub in subjects" :key="sub">
@@ -237,14 +219,14 @@
                                     </optgroup>
                                 </template>
                             </select>
-                            <button @click="addSubject()" class="bg-gray-800 dark:bg-gray-600 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black dark:hover:bg-gray-500 transition shadow-md text-sm sm:text-base w-full sm:w-auto" x-text="$store.global.t('btn_add_subject')">Add Subject</button>
+                            <button @click="addSubject()" class="bg-gray-800 text-white px-6 sm:px-8 py-2.5 rounded-md font-bold hover:bg-black transition shadow-md text-sm sm:text-base w-full sm:w-auto">Add Subject</button>
                         </div>
                         
                         <div class="flex flex-wrap gap-2">
                             <template x-for="(sub, index) in profile.subjects" :key="index">
-                                <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded-md text-xs sm:text-sm flex items-center gap-2 sm:gap-3 shadow-sm transition-colors">
+                                <div class="bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-xs sm:text-sm flex items-center gap-2 sm:gap-3 shadow-sm">
                                     <span x-text="sub" class="font-medium"></span>
-                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition p-1">
+                                    <button @click="removeSubject(index)" class="text-red-400 hover:text-red-600 transition p-1">
                                         <i class="fa-solid fa-times"></i>
                                     </button>
                                 </div>
@@ -257,67 +239,67 @@
     </main>
 
     <main x-cloak x-show="activeTab === 'inbox'" class="max-w-7xl mx-auto px-4 py-8 sm:py-12 min-h-[70vh]">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row h-[700px] max-h-[80vh] transition-colors">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col md:flex-row h-[700px] max-h-[80vh]">
             
-            <div class="w-full md:w-1/3 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-900 flex-shrink-0 h-1/3 md:h-full transition-colors">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm z-10 flex-shrink-0 transition-colors">
-                    <h3 class="font-bold text-gray-800 dark:text-white text-lg" x-text="$store.global.t('my_tutors')">My Tutors</h3>
+            <div class="w-full md:w-1/3 border-r border-gray-200 flex flex-col bg-gray-50 flex-shrink-0 h-1/3 md:h-full">
+                <div class="p-4 border-b border-gray-200 bg-white shadow-sm z-10 flex-shrink-0">
+                    <h3 class="font-bold text-gray-800 text-lg">My Tutors</h3>
                 </div>
                 <div class="overflow-y-auto flex-1 chat-scroll p-2 space-y-1">
                     <template x-for="contact in contacts" :key="contact.id">
-                        <button @click="selectContact(contact)" :class="activeContact?.id === contact.id ? 'bg-oxfordRed text-white shadow-md' : 'bg-transparent text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'" class="w-full text-left p-3 rounded-lg transition flex items-center gap-3">
-                            <img :src="contact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random&color=fff&bold=true`" class="w-10 h-10 rounded-full border-2 border-white dark:border-gray-700 shadow-sm object-cover bg-white dark:bg-gray-800 transition-colors">
+                        <button @click="selectContact(contact)" :class="activeContact?.id === contact.id ? 'bg-oxfordRed text-white shadow-md' : 'bg-transparent text-gray-800 hover:bg-gray-200'" class="w-full text-left p-3 rounded-lg transition flex items-center gap-3">
+                            <img :src="contact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random&color=fff&bold=true`" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-white">
                             <div class="overflow-hidden flex-1">
                                 <div class="font-bold text-sm truncate" x-text="contact.name"></div>
-                                <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500 dark:text-gray-400'" class="text-xs truncate transition-colors">
+                                <div :class="activeContact?.id === contact.id ? 'text-red-100' : 'text-gray-500'" class="text-xs truncate">
                                     <span class="uppercase font-bold tracking-wider" x-text="contact.role"></span> • <span x-text="contact.strand"></span>
                                 </div>
                             </div>
                         </button>
                     </template>
-                    <div x-show="contacts.length === 0" class="text-center p-6 text-gray-400 dark:text-gray-500 text-sm">
-                        <i class="fa-solid fa-inbox text-3xl mb-2 text-gray-300 dark:text-gray-600"></i><br><span x-text="$store.global.t('no_messages')">No messages yet.</span>
+                    <div x-show="contacts.length === 0" class="text-center p-6 text-gray-400 text-sm">
+                        <i class="fa-solid fa-inbox text-3xl mb-2 text-gray-300"></i><br>No messages yet.
                     </div>
                 </div>
             </div>
 
-            <div class="w-full md:w-2/3 flex flex-col h-2/3 md:h-full bg-white dark:bg-gray-800 relative transition-colors">
+            <div class="w-full md:w-2/3 flex flex-col h-2/3 md:h-full bg-white relative">
                 
-                <div x-show="!activeContact" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 z-10 bg-white dark:bg-gray-800 transition-colors">
-                    <i class="fa-regular fa-comments text-6xl mb-4 text-gray-200 dark:text-gray-700"></i>
-                    <p class="text-lg font-medium text-gray-500 dark:text-gray-400" x-text="$store.global.t('select_tutor_chat')">Select a tutor to start chatting</p>
+                <div x-show="!activeContact" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-10 bg-white">
+                    <i class="fa-regular fa-comments text-6xl mb-4 text-gray-200"></i>
+                    <p class="text-lg font-medium text-gray-500">Select a tutor to start chatting</p>
                 </div>
 
                 <template x-if="activeContact">
                     <div class="flex flex-col h-full w-full">
-                        <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 shadow-sm flex-shrink-0 transition-colors">
+                        <div class="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
                             <div class="flex items-start gap-4">
-                                <img :src="activeContact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeContact.name)}&background=random&color=fff&bold=true`" class="w-14 h-14 rounded-full border border-gray-200 dark:border-gray-600 object-cover shadow-sm bg-white dark:bg-gray-700 transition-colors">
+                                <img :src="activeContact.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeContact.name)}&background=random&color=fff&bold=true`" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm bg-white">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-start">
-                                        <h2 class="text-lg font-bold text-gray-800 dark:text-white truncate" x-text="activeContact.name"></h2>
+                                        <h2 class="text-lg font-bold text-gray-800 truncate" x-text="activeContact.name"></h2>
                                         
                                         <div class="text-right flex-shrink-0 ml-2" x-show="activeContact.role === 'tutor'">
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider" x-text="$store.global.t('rate')">Rate</span><br>
-                                            <span class="text-sm font-bold text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded shadow-sm whitespace-nowrap transition-colors">₱<span x-text="activeContact.hourlyRate || '0'"></span>/hr</span>
+                                            <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Rate</span><br>
+                                            <span class="text-sm font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">₱<span x-text="activeContact.hourlyRate || '0'"></span>/hr</span>
                                         </div>
                                     </div>
-                                    <p class="text-xs font-semibold text-oxfordRed dark:text-red-400 mb-1" x-text="activeContact.strand"></p>
-                                    <p class="text-xs text-gray-600 dark:text-gray-300 line-clamp-2 italic pr-4">"<span x-text="activeContact.bio || 'Professional Tutor'"></span>"</p>
+                                    <p class="text-xs font-semibold text-oxfordRed mb-1" x-text="activeContact.strand"></p>
+                                    <p class="text-xs text-gray-600 line-clamp-2 italic pr-4">"<span x-text="activeContact.bio || 'Professional Tutor'"></span>"</p>
                                 </div>
                             </div>
                             <div class="mt-3 flex flex-wrap gap-1.5" x-show="activeContact.subjects && activeContact.subjects.length > 0">
                                 <template x-for="sub in activeContact.subjects">
-                                    <span class="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 px-2 py-0.5 rounded-full shadow-sm transition-colors" x-text="sub"></span>
+                                    <span class="text-[10px] bg-gray-100 text-gray-700 border border-gray-200 px-2 py-0.5 rounded-full shadow-sm" x-text="sub"></span>
                                 </template>
                             </div>
                         </div>
 
-                        <div id="inbox-messages-container" class="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900 flex flex-col gap-4 chat-scroll transition-colors">
+                        <div id="inbox-messages-container" class="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-4 chat-scroll">
                             <template x-for="(msg, index) in activeChatHistory" :key="index">
                                 <div class="w-full flex flex-col">
                                     
-                                    <div x-show="msg.isSystemAlert" class="self-center bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-blue-200 dark:border-blue-800 my-1 font-medium transition-colors">
+                                    <div x-show="msg.isSystemAlert" class="self-center bg-blue-50 text-blue-800 p-2 rounded-lg text-xs w-[95%] text-center shadow-sm border border-blue-200 my-1 font-medium">
                                         <span x-text="msg.text"></span>
                                     </div>
 
@@ -329,8 +311,8 @@
                                     
                                     <div x-show="msg.senderId !== mySessionId && !msg.isSystemAlert" class="self-start flex flex-col w-full max-w-[85%]">
                                         <div class="flex gap-2 w-full">
-                                            <img :src="msg.avatarUrl || msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'T')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 object-cover shadow-sm bg-white dark:bg-gray-800 flex-shrink-0 transition-colors">
-                                            <div class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed transition-colors" x-text="msg.text"></div>
+                                            <img :src="msg.avatarUrl || msg.senderProfile?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || 'T')}&background=random&color=fff&bold=true`" class="w-8 h-8 rounded-full border border-gray-200 object-cover shadow-sm bg-white flex-shrink-0">
+                                            <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm leading-relaxed" x-text="msg.text"></div>
                                         </div>
                                     </div>
 
@@ -338,8 +320,8 @@
                             </template>
                         </div>
 
-                        <div class="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex gap-2 flex-shrink-0 transition-colors">
-                            <input type="text" x-model="inboxMessage" @keydown.enter="sendInboxMessage()" :placeholder="$store.global.t('msg_placeholder')" class="flex-1 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-full px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-oxfordRed focus:border-oxfordRed transition shadow-inner">
+                        <div class="p-3 border-t border-gray-200 bg-white flex gap-2 flex-shrink-0">
+                            <input type="text" x-model="inboxMessage" @keydown.enter="sendInboxMessage()" placeholder="Message your tutor..." class="flex-1 text-sm border border-gray-300 rounded-full px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-oxfordRed focus:border-oxfordRed transition shadow-inner">
                             <button @click="sendInboxMessage()" class="bg-oxfordRed text-white w-11 h-11 rounded-full flex justify-center items-center hover:bg-oxfordDark transition shadow-md flex-shrink-0">
                                 <i class="fa-solid fa-paper-plane text-sm"></i>
                             </button>
@@ -351,110 +333,6 @@
     </main>
 
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('global', {
-                theme: localStorage.getItem('studyio_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
-                lang: localStorage.getItem('studyio_lang') || 'en',
-                
-                init() {
-                    window.addEventListener('storage', (e) => {
-                        if (e.key === 'studyio_theme') {
-                            this.theme = e.newValue;
-                            if (this.theme === 'dark') {
-                                document.documentElement.classList.add('dark');
-                            } else {
-                                document.documentElement.classList.remove('dark');
-                            }
-                        }
-                        if (e.key === 'studyio_lang') {
-                            this.lang = e.newValue;
-                        }
-                    });
-                },
-
-                toggleTheme() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    localStorage.setItem('studyio_theme', this.theme);
-                    if (this.theme === 'dark') {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                    }
-                },
-                
-                toggleLang() {
-                    this.lang = this.lang === 'en' ? 'tl' : 'en';
-                    localStorage.setItem('studyio_lang', this.lang);
-                },
-                
-                t(key) {
-                    const dict = {
-                        'en': {
-                            'nav_home': 'Home', 
-                            'nav_logout': 'Log Out', 
-                            'dash_student_portal': 'Student Portal',
-                            'dash_profile_tab': 'My Profile', 
-                            'dash_inbox_tab': 'Tutor Inbox',
-                            'student_card': 'My Student Card', 
-                            'about_me': 'About Me', 
-                            'bio_placeholder': 'Write a little about yourself...',
-                            'subjects_help': 'Subjects I Need Help With', 
-                            'no_subjects': 'No subjects added yet.',
-                            'edit_profile': 'Edit Profile Settings', 
-                            'edit_desc': 'Personalize your account. Tutors will see this when you message them!',
-                            'auto_saving': 'Auto-Saving', 
-                            'form_name': 'Full Name', 
-                            'form_grade': 'Grade & Strand',
-                            'form_theme': 'Default Theme Color', 
-                            'form_avatar': 'Profile Picture (URL)', 
-                            'form_cover': 'Cover Photo (URL)',
-                            'quick_avatars': 'Quick Select Avatars',
-                            'quick_covers': 'Quick Select Covers',
-                            'form_bio': 'Short Bio', 
-                            'select_subject': '-- Select a subject to add --', 
-                            'btn_add_subject': 'Add Subject',
-                            'my_tutors': 'My Tutors', 
-                            'no_messages': 'No messages yet.',
-                            'select_tutor_chat': 'Select a tutor to start chatting', 
-                            'msg_placeholder': 'Message your tutor...',
-                            'rate': 'Rate'
-                        },
-                        'tl': {
-                            'nav_home': 'Home', 
-                            'nav_logout': 'Mag-log Out', 
-                            'dash_student_portal': 'Portal ng Estudyante',
-                            'dash_profile_tab': 'Aking Profile', 
-                            'dash_inbox_tab': 'Tutor Inbox',
-                            'student_card': 'Aking Student Card', 
-                            'about_me': 'Tungkol sa Akin', 
-                            'bio_placeholder': 'Magsulat ng kaunti tungkol sa iyong sarili...',
-                            'subjects_help': 'Mga Asignaturang Kailangan ko ng Tulong', 
-                            'no_subjects': 'Wala pang asignaturang naidagdag.',
-                            'edit_profile': 'I-edit ang Profile Settings', 
-                            'edit_desc': 'I-personalize ang iyong account. Makikita ito ng mga tutor kapag nag-message ka!',
-                            'auto_saving': 'Auto-Saving', 
-                            'form_name': 'Buong Pangalan', 
-                            'form_grade': 'Baitang at Strand',
-                            'form_theme': 'Default Theme Color', 
-                            'form_avatar': 'Larawan sa Profile (URL)', 
-                            'form_cover': 'Cover Photo (URL)',
-                            'quick_avatars': 'Mabilisang Pumili ng Avatar',
-                            'quick_covers': 'Mabilisang Pumili ng Cover',
-                            'form_bio': 'Maikling Bio', 
-                            'select_subject': '-- Pumili ng asignaturang idadagdag --', 
-                            'btn_add_subject': 'Magdagdag ng Asignatura',
-                            'my_tutors': 'Aking mga Tutors', 
-                            'no_messages': 'Wala pang mensahe.',
-                            'select_tutor_chat': 'Pumili ng tutor para magsimula ng chat', 
-                            'msg_placeholder': 'I-message ang iyong tutor...',
-                            'rate': 'Presyo'
-                        }
-                    };
-                    return dict[this.lang]?.[key] || key;
-                }
-            });
-        });
-
         const tabId = sessionStorage.getItem('studyio_tab_id') || 'tab_' + Math.random().toString(36).substr(2, 9);
         sessionStorage.setItem('studyio_tab_id', tabId);
 
@@ -599,8 +477,10 @@
                         
                         if (parsedMsg.type === 'chat') {
                             
+                            // 1. Prevent Echo (My own messages)
                             if (parsedMsg.senderId === this.mySessionId) return;
                             
+                            // 2. *** FIX: THE ANTI-DUPLICATE RULE RESTORED ***
                             const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
                             if (isDuplicate) return;
                             
