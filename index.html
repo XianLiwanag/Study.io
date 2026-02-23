@@ -860,12 +860,11 @@
                 checkApplicationStatus() {
                     if (!this.myApplication) return;
                     
+                    // If it's pending, check if they were magically approved in the background
                     if (this.myApplication.status === 'Pending') {
-                        const adminTutors = JSON.parse(localStorage.getItem('studyio_admin_tutors') || '[]');
-                        const adminApps = JSON.parse(localStorage.getItem('studyio_admin_apps') || '[]');
-                        
-                        const isApproved = adminTutors.find(t => t.id === this.myApplication.id);
-                        const isStillPending = adminApps.find(a => a.id === this.myApplication.id);
+                        // FIX: Trust the public directory (which MQTT updates) instead of the Admin's private storage
+                        const publicDir = JSON.parse(localStorage.getItem('studyio_public_directory') || '[]');
+                        const isApproved = publicDir.find(t => t.id === this.myApplication.id) || tutorsData.find(t => t.id === this.myApplication.id);
                         
                         if (isApproved) {
                             this.myApplication.status = 'Approved';
@@ -875,7 +874,7 @@
                             sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
                             this.currentUser = loggedInUser;
                             
-                            // Build Profile automatically when approved offline/in another tab
+                            // Build Profile automatically
                             const personalizedProfile = {
                                 id: this.myApplication.id, 
                                 name: this.myApplication.name, 
@@ -890,25 +889,9 @@
                             };
                             localStorage.setItem('studyio_tutor_profile_' + this.myApplication.email, JSON.stringify(personalizedProfile));
                             this.updateIdentity();
-                            
-                        } else if (!isStillPending) {
-                            // It was removed from apps but not added to tutors = Rejected
-                            this.myApplication.status = 'Rejected';
-                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
-                        }
-                    } else if (this.myApplication.status === 'Approved') {
-                        // Double check if the admin deleted the active tutor account later
-                        const adminTutors = JSON.parse(localStorage.getItem('studyio_admin_tutors') || '[]');
-                        const isApproved = adminTutors.find(t => t.id === this.myApplication.id);
-                        
-                        if (!isApproved) {
-                            this.myApplication.status = 'Rejected';
-                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
-                            if (this.currentUser && this.currentUser.email === this.myApplication.email) {
-                                this.logout();
-                            }
                         }
                     }
+                    // Deliberately removed the auto-reject logic. Rejections should ONLY happen via explicit MQTT signals now.
                 },
 
                 init() {
@@ -990,13 +973,13 @@
                     const savedApp = sessionStorage.getItem('studyio_my_application');
                     if (savedApp) { 
                         this.myApplication = JSON.parse(savedApp); 
-                        this.checkApplicationStatus(); // <-- VERIFY WITH DB ON PAGE LOAD
+                        this.checkApplicationStatus();
                     }
 
                     // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
                     window.addEventListener('storage', () => {
                         this.updateIdentity();
-                        this.checkApplicationStatus(); // <-- SYNC APPROVALS ACROSS TABS INSTANTLY
+                        this.checkApplicationStatus();
                     });
                     
                     window.addEventListener('visibilitychange', () => {
@@ -1063,7 +1046,6 @@
                             }
 
                             if (this.myApplication && this.myApplication.id === newTutor.id) {
-                                // If caught live by MQTT, auto-redirect!
                                 this.myApplication.status = 'Approved';
                                 sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
                                 
@@ -1103,7 +1085,6 @@
                         if (parsedMsg.type === 'delete_tutor') {
                             const idToRemove = parsedMsg.id;
                             
-                            // 👇 HUNT DOWN AND REMOVE GHOST PROFILES 👇
                             for (let i = 0; i < localStorage.length; i++) {
                                 const key = localStorage.key(i);
                                 if (key && key.startsWith('studyio_tutor_profile_')) {
@@ -1481,12 +1462,12 @@
                 tutorsData = JSON.parse(savedDirectory); 
             }
 
-            let allowedIds = null; // 👈 Track allowed IDs
+            let allowedIds = null;
             const adminTutors = localStorage.getItem('studyio_admin_tutors');
             
             if (adminTutors) {
                 const parsedAdmin = JSON.parse(adminTutors);
-                allowedIds = parsedAdmin.map(a => a.id); // 👈 Populate the whitelist
+                allowedIds = parsedAdmin.map(a => a.id);
                 
                 const originalLength = tutorsData.length;
                 
@@ -1519,7 +1500,6 @@
                 if (key && key.startsWith('studyio_tutor_profile_')) {
                     const p = JSON.parse(localStorage.getItem(key));
                     
-                    // 👇 SKIP & DESTROY PROFILES THAT WERE DELETED BY ADMIN 👇
                     if (allowedIds && !allowedIds.includes(p.id)) {
                         localStorage.removeItem(key);
                         continue; 
@@ -1831,7 +1811,6 @@
             document.body.style.overflow = 'auto'; 
         }
 
-        // *** FIX: THE HANDOFF SYSTEM ***
         function triggerChat() { 
             const currentUserStr = sessionStorage.getItem('studyio_current_user');
             
