@@ -856,6 +856,61 @@
                 mqttClient: null, 
                 newTutorAlert: false, 
                 
+                // *** BULLETPROOF APPLICATION TRACKER ***
+                checkApplicationStatus() {
+                    if (!this.myApplication) return;
+                    
+                    if (this.myApplication.status === 'Pending') {
+                        const adminTutors = JSON.parse(localStorage.getItem('studyio_admin_tutors') || '[]');
+                        const adminApps = JSON.parse(localStorage.getItem('studyio_admin_apps') || '[]');
+                        
+                        const isApproved = adminTutors.find(t => t.id === this.myApplication.id);
+                        const isStillPending = adminApps.find(a => a.id === this.myApplication.id);
+                        
+                        if (isApproved) {
+                            this.myApplication.status = 'Approved';
+                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                            
+                            const loggedInUser = { name: this.myApplication.name, email: this.myApplication.email, role: 'tutor' };
+                            sessionStorage.setItem('studyio_current_user', JSON.stringify(loggedInUser));
+                            this.currentUser = loggedInUser;
+                            
+                            // Build Profile automatically when approved offline/in another tab
+                            const personalizedProfile = {
+                                id: this.myApplication.id, 
+                                name: this.myApplication.name, 
+                                strand: this.myApplication.strand,
+                                bio: this.myApplication.bio, 
+                                hourlyRate: this.myApplication.hourlyRate,
+                                headerColor: "bg-gray-800", 
+                                avatarUrl: "", 
+                                coverImageUrl: "",
+                                subjects: this.myApplication.subjects || [],
+                                schedule: [] 
+                            };
+                            localStorage.setItem('studyio_tutor_profile_' + this.myApplication.email, JSON.stringify(personalizedProfile));
+                            this.updateIdentity();
+                            
+                        } else if (!isStillPending) {
+                            // It was removed from apps but not added to tutors = Rejected
+                            this.myApplication.status = 'Rejected';
+                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                        }
+                    } else if (this.myApplication.status === 'Approved') {
+                        // Double check if the admin deleted the active tutor account later
+                        const adminTutors = JSON.parse(localStorage.getItem('studyio_admin_tutors') || '[]');
+                        const isApproved = adminTutors.find(t => t.id === this.myApplication.id);
+                        
+                        if (!isApproved) {
+                            this.myApplication.status = 'Rejected';
+                            sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
+                            if (this.currentUser && this.currentUser.email === this.myApplication.email) {
+                                this.logout();
+                            }
+                        }
+                    }
+                },
+
                 init() {
                     // *** CATCH LOGOUT REDIRECT ***
                     if (window.location.search.includes('logged_out=1')) {
@@ -931,19 +986,24 @@
                         this.loginModalOpen = true;
                     });
 
+                    // Check saved application tracker
+                    const savedApp = sessionStorage.getItem('studyio_my_application');
+                    if (savedApp) { 
+                        this.myApplication = JSON.parse(savedApp); 
+                        this.checkApplicationStatus(); // <-- VERIFY WITH DB ON PAGE LOAD
+                    }
+
                     // *** REACTIVITY LISTENERS: Updates Home Page instantly when tabs switch or storage changes ***
-                    window.addEventListener('storage', () => this.updateIdentity());
+                    window.addEventListener('storage', () => {
+                        this.updateIdentity();
+                        this.checkApplicationStatus(); // <-- SYNC APPROVALS ACROSS TABS INSTANTLY
+                    });
+                    
                     window.addEventListener('visibilitychange', () => {
                         if (!document.hidden) {
                             this.updateIdentity();
                         }
                     });
-
-                    // Check saved application tracker
-                    const savedApp = sessionStorage.getItem('studyio_my_application');
-                    if (savedApp) { 
-                        this.myApplication = JSON.parse(savedApp); 
-                    }
 
                     // *** BACK-BUTTON CACHE FIX ***
                     window.addEventListener('pageshow', (event) => {
@@ -1003,6 +1063,7 @@
                             }
 
                             if (this.myApplication && this.myApplication.id === newTutor.id) {
+                                // If caught live by MQTT, auto-redirect!
                                 this.myApplication.status = 'Approved';
                                 sessionStorage.setItem('studyio_my_application', JSON.stringify(this.myApplication));
                                 
@@ -1042,7 +1103,7 @@
                         if (parsedMsg.type === 'delete_tutor') {
                             const idToRemove = parsedMsg.id;
                             
-                            // 👇 FIX: HUNT DOWN AND REMOVE GHOST PROFILES 👇
+                            // 👇 HUNT DOWN AND REMOVE GHOST PROFILES 👇
                             for (let i = 0; i < localStorage.length; i++) {
                                 const key = localStorage.key(i);
                                 if (key && key.startsWith('studyio_tutor_profile_')) {
@@ -1458,7 +1519,7 @@
                 if (key && key.startsWith('studyio_tutor_profile_')) {
                     const p = JSON.parse(localStorage.getItem(key));
                     
-                    // 👇 FIX: SKIP & DESTROY PROFILES THAT WERE DELETED BY ADMIN 👇
+                    // 👇 SKIP & DESTROY PROFILES THAT WERE DELETED BY ADMIN 👇
                     if (allowedIds && !allowedIds.includes(p.id)) {
                         localStorage.removeItem(key);
                         continue; 
@@ -1770,6 +1831,7 @@
             document.body.style.overflow = 'auto'; 
         }
 
+        // *** FIX: THE HANDOFF SYSTEM ***
         function triggerChat() { 
             const currentUserStr = sessionStorage.getItem('studyio_current_user');
             
