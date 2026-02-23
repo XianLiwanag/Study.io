@@ -1398,7 +1398,6 @@
             }
         ];
 
-        // *** ZOMBIE PROFILE FIX: STRICT VALIDATION ***
         function reconstructDatabase() {
             let hasChanges = false;
             const savedDirectory = localStorage.getItem('studyio_public_directory');
@@ -1407,23 +1406,19 @@
                 tutorsData = JSON.parse(savedDirectory); 
             }
 
-            let validIds = [];
-
             const adminTutors = localStorage.getItem('studyio_admin_tutors');
             if (adminTutors) {
                 const parsedAdmin = JSON.parse(adminTutors);
-                validIds = parsedAdmin.map(t => String(t.id));
                 const originalLength = tutorsData.length;
                 
-                // Keep only tutors that are still in the Admin's official list
-                tutorsData = tutorsData.filter(t => validIds.includes(String(t.id)));
+                tutorsData = tutorsData.filter(t => parsedAdmin.some(at => at.id === t.id));
                 
                 if (tutorsData.length !== originalLength) {
                     hasChanges = true; 
                 }
 
                 parsedAdmin.forEach(at => {
-                    if (!tutorsData.some(t => String(t.id) === String(at.id))) {
+                    if (!tutorsData.some(t => t.id === at.id)) {
                         tutorsData.unshift({ 
                             id: at.id, 
                             name: at.name, 
@@ -1437,26 +1432,22 @@
                         hasChanges = true;
                     }
                 });
-            } else {
-                // If the Admin hasn't deleted or added anyone yet, all default tutors are valid
-                validIds = tutorsData.map(t => String(t.id));
             }
 
-            // *** APPLY ALL SCOPED PROFILES TO THE GRID (WITH SECURITY CHECK) ***
+            // *** APPLY ALL SCOPED PROFILES TO THE GRID ***
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key.startsWith('studyio_tutor_profile_')) {
                     const p = JSON.parse(localStorage.getItem(key));
-                    
-                    // SECURITY FIX: Only apply the private profile IF the tutor is allowed to exist!
-                    if (validIds.includes(String(p.id))) {
-                        const index = tutorsData.findIndex(t => String(t.id) === String(p.id));
-                        if (index !== -1) {
-                            if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
-                                tutorsData[index] = { ...tutorsData[index], ...p }; 
-                                hasChanges = true; 
-                            }
+                    const index = tutorsData.findIndex(t => t.id === p.id);
+                    if (index !== -1) {
+                        if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
+                            tutorsData[index] = { ...tutorsData[index], ...p }; 
+                            hasChanges = true; 
                         }
+                    } else { 
+                        tutorsData.unshift(p); 
+                        hasChanges = true; 
                     }
                 }
             }
