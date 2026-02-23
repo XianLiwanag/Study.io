@@ -177,7 +177,7 @@
                         </div>
                         <div>
                             <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Hourly Rate (₱)</label>
-                            <input type="number" x-model="profile.hourlyRate" @input="triggerSync()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
+                            <input type="number" x-model.number="profile.hourlyRate" @input="triggerSync()" class="w-full border border-gray-300 rounded-md py-2 px-3 sm:py-2.5 focus:ring-2 focus:ring-oxfordRed focus:outline-none transition shadow-sm text-sm">
                         </div>
                         <div>
                             <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Default Theme Color</label>
@@ -451,7 +451,42 @@
                         if (savedProfile) { 
                             this.profile = JSON.parse(savedProfile); 
                         } else {
-                            this.profile.name = this.currentUser.name;
+                            // 👇 FIX: FIND THE CORRECT ID TO SYNC PROPERLY 👇
+                            const myAppStr = sessionStorage.getItem('studyio_my_application');
+                            const myApp = myAppStr ? JSON.parse(myAppStr) : null;
+                            
+                            const publicDir = JSON.parse(localStorage.getItem('studyio_public_directory') || '[]');
+                            const adminTutors = JSON.parse(localStorage.getItem('studyio_admin_tutors') || '[]');
+                            const existingRecord = publicDir.find(t => t.name === this.currentUser.name) || adminTutors.find(t => t.name === this.currentUser.name);
+                            
+                            if (myApp && myApp.id) {
+                                this.profile.id = myApp.id;
+                                this.profile.name = myApp.name;
+                                this.profile.strand = myApp.strand || "Not Specified";
+                                this.profile.hourlyRate = myApp.hourlyRate || 100;
+                                this.profile.bio = myApp.bio || "Ready to teach!";
+                                this.profile.subjects = myApp.subjects || [];
+                                this.profile.headerColor = "bg-gray-800";
+                            } else if (existingRecord) {
+                                this.profile.id = existingRecord.id;
+                                this.profile.name = existingRecord.name;
+                                this.profile.strand = existingRecord.strand || "Not Specified";
+                                this.profile.hourlyRate = existingRecord.hourlyRate || 100;
+                                this.profile.bio = existingRecord.bio || "Ready to teach!";
+                                this.profile.subjects = existingRecord.subjects || [];
+                                this.profile.schedule = existingRecord.schedule || [];
+                                this.profile.headerColor = existingRecord.headerColor || "bg-gray-800";
+                            } else {
+                                this.profile.id = Date.now();
+                                this.profile.name = this.currentUser.name;
+                                this.profile.strand = "Not Specified";
+                                this.profile.hourlyRate = 100;
+                                this.profile.subjects = [];
+                                this.profile.schedule = [];
+                                this.profile.bio = "Ready to teach!";
+                                this.profile.headerColor = "bg-gray-800";
+                            }
+
                             if (this.currentUser.avatar) {
                                 this.profile.avatarUrl = this.currentUser.avatar;
                             }
@@ -495,10 +530,8 @@
                         
                         if (parsedMsg.type === 'chat') {
                             
-                            // 1. Prevent Echo (My own messages)
                             if (parsedMsg.senderId === this.mySessionId) return;
 
-                            // 2. *** FIX: THE ANTI-DUPLICATE RULE RESTORED ***
                             const isDuplicate = this.allMessages.some(m => m.timestamp === parsedMsg.timestamp && m.senderId === parsedMsg.senderId);
                             if (isDuplicate) return;
 
