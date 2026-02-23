@@ -419,7 +419,7 @@
                         </div>
                         <div>
                             <h4 class="font-bold text-gray-800 text-sm md:text-base">Headquarters</h4>
-                            <p class="text-xs md:text-sm text-gray-500 mt-1">St. Augustine Academy of Pampanga<br>Pampanga, Philippines</p>
+                            <p class="text-xs md:text-sm text-gray-500 mt-1">Oxford Grace Campus<br>Manila, Philippines</p>
                         </div>
                     </div>
                 </div>
@@ -1025,6 +1025,8 @@
                                 };
                                 localStorage.setItem('studyio_tutor_profile_' + this.myApplication.email, JSON.stringify(personalizedProfile));
                                 this.updateIdentity();
+
+                                window.location.href = 'tutor-dashboard.html';
                             }
                         }
 
@@ -1039,6 +1041,18 @@
                         // Handle Deletions
                         if (parsedMsg.type === 'delete_tutor') {
                             const idToRemove = parsedMsg.id;
+                            
+                            // 👇 FIX: HUNT DOWN AND REMOVE GHOST PROFILES 👇
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && key.startsWith('studyio_tutor_profile_')) {
+                                    const p = JSON.parse(localStorage.getItem(key));
+                                    if (p && p.id === idToRemove) {
+                                        localStorage.removeItem(key);
+                                    }
+                                }
+                            }
+
                             const tutorIndex = tutorsData.findIndex(t => t.id === idToRemove);
                             
                             if (tutorIndex !== -1) {
@@ -1406,9 +1420,13 @@
                 tutorsData = JSON.parse(savedDirectory); 
             }
 
+            let allowedIds = null; // 👈 Track allowed IDs
             const adminTutors = localStorage.getItem('studyio_admin_tutors');
+            
             if (adminTutors) {
                 const parsedAdmin = JSON.parse(adminTutors);
+                allowedIds = parsedAdmin.map(a => a.id); // 👈 Populate the whitelist
+                
                 const originalLength = tutorsData.length;
                 
                 tutorsData = tutorsData.filter(t => parsedAdmin.some(at => at.id === t.id));
@@ -1437,8 +1455,15 @@
             // *** APPLY ALL SCOPED PROFILES TO THE GRID ***
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key.startsWith('studyio_tutor_profile_')) {
+                if (key && key.startsWith('studyio_tutor_profile_')) {
                     const p = JSON.parse(localStorage.getItem(key));
+                    
+                    // 👇 FIX: SKIP & DESTROY PROFILES THAT WERE DELETED BY ADMIN 👇
+                    if (allowedIds && !allowedIds.includes(p.id)) {
+                        localStorage.removeItem(key);
+                        continue; 
+                    }
+
                     const index = tutorsData.findIndex(t => t.id === p.id);
                     if (index !== -1) {
                         if (JSON.stringify(tutorsData[index]) !== JSON.stringify(p)) { 
@@ -1745,7 +1770,6 @@
             document.body.style.overflow = 'auto'; 
         }
 
-        // *** FIX: THE HANDOFF SYSTEM ***
         function triggerChat() { 
             const currentUserStr = sessionStorage.getItem('studyio_current_user');
             
