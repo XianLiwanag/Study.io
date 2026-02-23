@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
-        // PREVENT FLASH OF UNSTYLED CONTENT
+        // PREVENT FLASH OF UNSTYLED CONTENT (Dark Mode)
         if (localStorage.getItem('studyio_theme') === 'dark' || (!('studyio_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -48,7 +48,7 @@
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100 transition-colors duration-300" x-data="adminApp()">
 
-    <nav class="bg-gray-900 dark:bg-black shadow-md sticky top-0 z-40 transition-colors duration-300">
+    <nav class="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-40 transition-colors duration-300 border-b border-transparent dark:border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between h-16 sm:h-20 items-center">
             
             <div class="flex items-center gap-2 sm:gap-3 cursor-pointer" onclick="window.location.href='index.html'">
@@ -56,39 +56,39 @@
                     <i class="fa-solid fa-shield-halved text-lg sm:text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg sm:text-xl font-bold text-white leading-tight">Study.io</h1>
-                    <p class="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-widest leading-tight" x-text="$store.global.t('dash_admin_portal')">Admin Portal</p>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white leading-tight">Study.io</h1>
+                    <p class="text-[9px] sm:text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest leading-tight" x-text="$store.global.t('dash_admin_portal')">Admin Portal</p>
                 </div>
             </div>
             
             <div class="flex items-center gap-3 sm:gap-6">
-                <span class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full bg-green-900/60 text-green-400 border border-green-700 animate-pulse hidden md:inline-flex items-center">
+                <span class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/60 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 animate-pulse hidden md:inline-flex items-center transition-colors">
                     <i class="fa-solid fa-satellite-dish mr-1"></i> <span x-text="$store.global.t('live_network')">Live Network Sync</span>
                 </span>
                 
-                <div class="h-6 w-px bg-gray-700 mx-1 sm:mx-2 hidden md:block"></div>
+                <div class="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-1 sm:mx-2 hidden md:block transition-colors"></div>
 
-                <a href="index.html" class="text-gray-300 hover:text-white transition text-xs sm:text-sm flex items-center gap-2 border border-gray-700 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-md hover:bg-gray-800">
+                <a href="index.html" class="text-gray-600 dark:text-gray-300 hover:text-oxfordRed dark:hover:text-white transition text-xs sm:text-sm flex items-center gap-2 border border-gray-300 dark:border-gray-700 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-md bg-gray-50 dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
                     <i class="fa-solid fa-arrow-left"></i> 
                     <span class="hidden sm:inline" x-text="$store.global.t('back_main')">Back to Main Site</span>
                     <span class="sm:hidden" x-text="$store.global.t('nav_home')">Home</span>
                 </a>
                 
-                <div class="hidden sm:flex items-center gap-2 border-l border-r border-gray-700 px-3 mx-1">
-                    <button @click="$store.global.toggleLang()" class="text-xs font-bold text-gray-300 hover:text-white transition px-2 py-1 rounded bg-gray-800 border border-gray-700">
+                <div class="hidden sm:flex items-center gap-2 border-l border-r border-gray-300 dark:border-gray-700 px-3 mx-1 transition-colors">
+                    <button @click="$store.global.toggleLang()" class="text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-oxfordRed dark:hover:text-white transition px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                         <span x-text="$store.global.lang === 'en' ? 'EN' : 'TL'"></span>
                     </button>
-                    <button @click="$store.global.toggleTheme()" class="text-gray-400 hover:text-yellow-400 transition p-2 rounded-full">
+                    <button @click="$store.global.toggleTheme()" class="text-gray-500 dark:text-gray-400 hover:text-oxfordRed dark:hover:text-yellow-400 transition p-2 rounded-full">
                         <i class="fa-solid" :class="$store.global.theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
                     </button>
                 </div>
 
-                <div class="flex items-center gap-2 text-gray-200">
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-oxfordRed flex items-center justify-center font-bold text-xs sm:text-sm shadow-inner">A</div>
+                <div class="flex items-center gap-2 text-gray-700 dark:text-gray-200 transition-colors">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-oxfordRed text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-inner">A</div>
                     <span class="font-medium text-sm hidden sm:inline" x-text="currentUser ? currentUser.name : 'Super Admin'"></span>
                 </div>
 
-                <button @click="logout()" class="text-gray-400 hover:text-white transition p-2 sm:p-0 sm:ml-2">
+                <button @click="logout()" class="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-white transition p-2 sm:p-0 sm:ml-2">
                     <i class="fa-solid fa-arrow-right-from-bracket text-lg sm:text-base"></i>
                 </button>
             </div>
@@ -361,47 +361,112 @@
     </div>
 
     <script>
-        // GLOBAL TRANSLATION STORE
+        // GLOBAL TRANSLATION & THEME STORE
         document.addEventListener('alpine:init', () => {
             Alpine.store('global', {
                 theme: localStorage.getItem('studyio_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
                 lang: localStorage.getItem('studyio_lang') || 'en',
                 
+                init() {
+                    window.addEventListener('storage', (e) => {
+                        if (e.key === 'studyio_theme') {
+                            this.theme = e.newValue;
+                            if (this.theme === 'dark') {
+                                document.documentElement.classList.add('dark');
+                            } else {
+                                document.documentElement.classList.remove('dark');
+                            }
+                        }
+                        if (e.key === 'studyio_lang') {
+                            this.lang = e.newValue;
+                        }
+                    });
+                },
+
                 toggleTheme() {
                     this.theme = this.theme === 'light' ? 'dark' : 'light';
                     localStorage.setItem('studyio_theme', this.theme);
-                    if (this.theme === 'dark') { document.documentElement.classList.add('dark'); } 
-                    else { document.documentElement.classList.remove('dark'); }
+                    if (this.theme === 'dark') {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
                 },
+                
                 toggleLang() {
                     this.lang = this.lang === 'en' ? 'tl' : 'en';
                     localStorage.setItem('studyio_lang', this.lang);
                 },
+                
                 t(key) {
                     const dict = {
                         'en': {
-                            'dash_admin_portal': 'Admin Portal', 'live_network': 'Live Network Sync', 'back_main': 'Back to Main Site',
-                            'nav_home': 'Home', 'nav_logout': 'Log Out', 'dash_overview': 'Dashboard Overview', 'reset_demo': 'Reset Demo Data',
-                            'total_students': 'Total Students', 'active_tutors': 'Active Tutors', 'pending_review': 'Pending Review',
-                            'platform_fees': 'Platform Fees', 'tab_pending': 'Pending Applications', 'tab_active': 'Active Tutors',
-                            'awaiting_approval': 'Awaiting Approval', 'th_applicant': 'Applicant Name', 'th_grade_strand': 'Grade & Strand',
-                            'th_subjects': 'Top Subjects', 'th_actions': 'Actions', 'btn_review': 'Review', 'btn_approve': 'Approve',
-                            'all_caught_up': 'All caught up!', 'no_pending_apps': 'There are no pending tutor applications right now.',
-                            'manage_live': 'Manage Live Platform Profiles', 'th_tutor': 'Tutor Name', 'th_rate': 'Rate', 'btn_remove': 'Remove',
-                            'review_title': 'Applicant Review', 'age_contact': 'Age / Contact', 'teaching_bio': 'Teaching Bio',
-                            'subjects_to_teach': 'Subjects to Teach', 'btn_reject': 'Reject Application', 'btn_cancel': 'Cancel'
+                            'dash_admin_portal': 'Admin Portal', 
+                            'live_network': 'Live Network Sync', 
+                            'back_main': 'Back to Main Site',
+                            'nav_home': 'Home', 
+                            'nav_logout': 'Log Out', 
+                            'dash_overview': 'Dashboard Overview', 
+                            'reset_demo': 'Reset Demo Data',
+                            'total_students': 'Total Students', 
+                            'active_tutors': 'Active Tutors', 
+                            'pending_review': 'Pending Review',
+                            'platform_fees': 'Platform Fees', 
+                            'tab_pending': 'Pending Applications', 
+                            'tab_active': 'Active Tutors',
+                            'awaiting_approval': 'Awaiting Approval', 
+                            'th_applicant': 'Applicant Name', 
+                            'th_grade_strand': 'Grade & Strand',
+                            'th_subjects': 'Top Subjects', 
+                            'th_actions': 'Actions', 
+                            'btn_review': 'Review', 
+                            'btn_approve': 'Approve',
+                            'all_caught_up': 'All caught up!', 
+                            'no_pending_apps': 'There are no pending tutor applications right now.',
+                            'manage_live': 'Manage Live Platform Profiles', 
+                            'th_tutor': 'Tutor Name', 
+                            'th_rate': 'Rate', 
+                            'btn_remove': 'Remove',
+                            'review_title': 'Applicant Review', 
+                            'age_contact': 'Age / Contact', 
+                            'teaching_bio': 'Teaching Bio',
+                            'subjects_to_teach': 'Subjects to Teach', 
+                            'btn_reject': 'Reject Application', 
+                            'btn_cancel': 'Cancel'
                         },
                         'tl': {
-                            'dash_admin_portal': 'Admin Portal', 'live_network': 'Aktibong Live Sync', 'back_main': 'Bumalik sa Main Site',
-                            'nav_home': 'Home', 'nav_logout': 'Mag-log Out', 'dash_overview': 'Pangkalahatang-ideya ng Dashboard', 'reset_demo': 'I-reset ang Demo Data',
-                            'total_students': 'Kabuuang Estudyante', 'active_tutors': 'Aktibong Tutors', 'pending_review': 'Nakabinbing Pagsusuri',
-                            'platform_fees': 'Kabayaran sa Platform', 'tab_pending': 'Nakabinbing Aplikasyon', 'tab_active': 'Aktibong Tutors',
-                            'awaiting_approval': 'Naghihintay ng Pag-apruba', 'th_applicant': 'Pangalan ng Aplikante', 'th_grade_strand': 'Baitang at Strand',
-                            'th_subjects': 'Pangunahing Asignatura', 'th_actions': 'Aksyon', 'btn_review': 'Suriin', 'btn_approve': 'Aprubahan',
-                            'all_caught_up': 'Lahat ay tapos na!', 'no_pending_apps': 'Walang nakabinbing aplikasyon para sa tutor ngayon.',
-                            'manage_live': 'Pamahalaan ang mga Live Profile', 'th_tutor': 'Pangalan ng Tutor', 'th_rate': 'Presyo', 'btn_remove': 'Alisin',
-                            'review_title': 'Pagsusuri ng Aplikante', 'age_contact': 'Edad / Numero', 'teaching_bio': 'Teaching Bio',
-                            'subjects_to_teach': 'Asignaturang Ituturo', 'btn_reject': 'Tanggihan ang Aplikasyon', 'btn_cancel': 'Kanselahin'
+                            'dash_admin_portal': 'Admin Portal', 
+                            'live_network': 'Aktibong Live Sync', 
+                            'back_main': 'Bumalik sa Main Site',
+                            'nav_home': 'Home', 
+                            'nav_logout': 'Mag-log Out', 
+                            'dash_overview': 'Pangkalahatang-ideya ng Dashboard', 
+                            'reset_demo': 'I-reset ang Demo Data',
+                            'total_students': 'Kabuuang Estudyante', 
+                            'active_tutors': 'Aktibong Tutors', 
+                            'pending_review': 'Nakabinbing Pagsusuri',
+                            'platform_fees': 'Kabayaran sa Platform', 
+                            'tab_pending': 'Nakabinbing Aplikasyon', 
+                            'tab_active': 'Aktibong Tutors',
+                            'awaiting_approval': 'Naghihintay ng Pag-apruba', 
+                            'th_applicant': 'Pangalan ng Aplikante', 
+                            'th_grade_strand': 'Baitang at Strand',
+                            'th_subjects': 'Pangunahing Asignatura', 
+                            'th_actions': 'Aksyon', 
+                            'btn_review': 'Suriin', 
+                            'btn_approve': 'Aprubahan',
+                            'all_caught_up': 'Lahat ay tapos na!', 
+                            'no_pending_apps': 'Walang nakabinbing aplikasyon para sa tutor ngayon.',
+                            'manage_live': 'Pamahalaan ang mga Live Profile', 
+                            'th_tutor': 'Pangalan ng Tutor', 
+                            'th_rate': 'Presyo', 
+                            'btn_remove': 'Alisin',
+                            'review_title': 'Pagsusuri ng Aplikante', 
+                            'age_contact': 'Edad / Numero', 
+                            'teaching_bio': 'Teaching Bio',
+                            'subjects_to_teach': 'Asignaturang Ituturo', 
+                            'btn_reject': 'Tanggihan ang Aplikasyon', 
+                            'btn_cancel': 'Kanselahin'
                         }
                     };
                     return dict[this.lang]?.[key] || key;
@@ -416,43 +481,110 @@
         const supabaseClient = window.supabase.createClient(
             'https://vdtokaamdrvyzchtepjy.supabase.co', 
             'sb_publishable_1HRmAvVpSXBSpzjOeE5ZeA_Atr3x015',
-            { auth: { storage: window.sessionStorage, storageKey: 'studyio_auth_' + tabId } }
+            { 
+                auth: { 
+                    storage: window.sessionStorage,
+                    storageKey: 'studyio_auth_' + tabId 
+                } 
+            }
         );
 
         function adminApp() {
             return {
-                currentUser: null, activeTab: 'pending', isReviewOpen: false, selectedApplicant: null, toasts: [], mqttClient: null, applications: [], activeTutors: [],
+                currentUser: null,
+                activeTab: 'pending', 
+                isReviewOpen: false,
+                selectedApplicant: null,
+                toasts: [],
+                mqttClient: null,
                 
-                defaultApplications: [ { id: 101, name: "Miguel Cruz", email: "miguel.cruz@gmail.com", strand: "Grade 12 - STEM", age: 18, contact: "+63 917 123 4567", hourlyRate: 150, subjects: ["General Chemistry 1", "Basic Calculus"], bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." }, { id: 102, name: "Isabella Reyes", email: "isa.reyes22@yahoo.com", strand: "Grade 12 - HUMSS", age: 17, contact: "+63 918 987 6543", hourlyRate: 120, subjects: ["Creative Writing", "Philippine Politics and Governance"], bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" } ],
-                defaultTutors: [ { id: 1, name: "Janella Manansala", strand: "Grade 12 - STEM", hourlyRate: 200 }, { id: 2, name: "Xian Liwanag", strand: "Grade 12 - STEM", hourlyRate: 150 }, { id: 3, name: "Anjela Magcalas", strand: "Grade 12 - STEM", hourlyRate: 250 }, { id: 4, name: "Jasmaine Magcalas", strand: "Grade 12 - STEM", hourlyRate: 180 }, { id: 5, name: "Cedric Santos", strand: "Grade 12 - ABM", hourlyRate: 180 }, { id: 6, name: "Johann Hernandez", strand: "Grade 12 - STEM", hourlyRate: 200 }, { id: 7, name: "Kyle Ikan", strand: "Grade 11 - STEM", hourlyRate: 150 }, { id: 8, name: "Akon Mariano", strand: "Grade 12 - STEM", hourlyRate: 150 }, { id: 9, name: "Ace Magno", strand: "Grade 12 - STEM", hourlyRate: 100 } ],
+                applications: [],
+                activeTutors: [],
+
+                defaultApplications: [
+                    { 
+                        id: 101, 
+                        name: "Miguel Cruz", 
+                        email: "miguel.cruz@gmail.com", 
+                        strand: "Grade 12 - STEM", 
+                        age: 18, 
+                        contact: "+63 917 123 4567", 
+                        hourlyRate: 150, 
+                        subjects: ["General Chemistry 1", "Basic Calculus"], 
+                        bio: "I have consistently ranked top of my class in Chemistry and Mathematics. I break things down into steps." 
+                    },
+                    { 
+                        id: 102, 
+                        name: "Isabella Reyes", 
+                        email: "isa.reyes22@yahoo.com", 
+                        strand: "Grade 12 - HUMSS", 
+                        age: 17, 
+                        contact: "+63 918 987 6543", 
+                        hourlyRate: 120, 
+                        subjects: ["Creative Writing", "Philippine Politics and Governance"], 
+                        bio: "President of the Debate Club and passionate writer. I can help you structure your essays!" 
+                    }
+                ],
+                defaultTutors: [
+                    { id: 1, name: "Janella Manansala", strand: "Grade 12 - STEM", hourlyRate: 200 },
+                    { id: 2, name: "Xian Liwanag", strand: "Grade 12 - STEM", hourlyRate: 150 },
+                    { id: 3, name: "Anjela Magcalas", strand: "Grade 12 - STEM", hourlyRate: 250 },
+                    { id: 4, name: "Jasmaine Magcalas", strand: "Grade 12 - STEM", hourlyRate: 180 },
+                    { id: 5, name: "Cedric Santos", strand: "Grade 12 - ABM", hourlyRate: 180 },
+                    { id: 6, name: "Johann Hernandez", strand: "Grade 12 - STEM", hourlyRate: 200 },
+                    { id: 7, name: "Kyle Ikan", strand: "Grade 11 - STEM", hourlyRate: 150 },
+                    { id: 8, name: "Akon Mariano", strand: "Grade 12 - STEM", hourlyRate: 150 },
+                    { id: 9, name: "Ace Magno", strand: "Grade 12 - STEM", hourlyRate: 100 }
+                ],
 
                 init() {
                     const savedSession = sessionStorage.getItem('studyio_current_user');
+                    
                     if (savedSession) { 
                         this.currentUser = JSON.parse(savedSession); 
-                        if (this.currentUser.role !== 'admin') { window.location.href = 'index.html'; }
-                    } else { window.location.href = 'index.html'; }
+                        if (this.currentUser.role !== 'admin') {
+                            window.location.href = 'index.html'; 
+                        }
+                    } else {
+                        window.location.href = 'index.html'; 
+                    }
 
                     window.addEventListener('pageshow', (event) => {
-                        if (!sessionStorage.getItem('studyio_current_user')) { window.location.href = 'index.html'; } 
-                        else {
+                        if (!sessionStorage.getItem('studyio_current_user')) {
+                            window.location.href = 'index.html'; 
+                        } else {
                             const user = JSON.parse(sessionStorage.getItem('studyio_current_user'));
-                            if (user.role !== 'admin') { window.location.href = 'index.html'; }
+                            if (user.role !== 'admin') {
+                                window.location.href = 'index.html';
+                            }
                         }
                     });
 
                     const savedApps = localStorage.getItem('studyio_admin_apps');
                     const savedTutors = localStorage.getItem('studyio_admin_tutors');
                     
-                    if(savedApps) { this.applications = JSON.parse(savedApps); } else { this.applications = [...this.defaultApplications]; }
-                    if(savedTutors) { this.activeTutors = JSON.parse(savedTutors); } else { this.activeTutors = [...this.defaultTutors]; }
+                    if(savedApps) { 
+                        this.applications = JSON.parse(savedApps); 
+                    } else { 
+                        this.applications = [...this.defaultApplications]; 
+                    }
+                    
+                    if(savedTutors) { 
+                        this.activeTutors = JSON.parse(savedTutors); 
+                    } else { 
+                        this.activeTutors = [...this.defaultTutors]; 
+                    }
 
                     this.mqttClient = mqtt.connect('wss://test.mosquitto.org:8081/mqtt');
-                    this.mqttClient.on('connect', () => { this.mqttClient.subscribe('studyio/system/new_application'); });
+                    
+                    this.mqttClient.on('connect', () => { 
+                        this.mqttClient.subscribe('studyio/system/new_application'); 
+                    });
 
                     this.mqttClient.on('message', (topic, message) => {
                         if (topic === 'studyio/system/new_application') {
                             const newApp = JSON.parse(message.toString());
+                            
                             if(!this.applications.find(a => a.id === newApp.id)) {
                                 this.applications.unshift(newApp);
                                 this.saveState(); 
@@ -463,7 +595,9 @@
                 },
 
                 async logout() {
-                    this.currentUser = null; sessionStorage.clear(); localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
+                    this.currentUser = null;
+                    sessionStorage.clear();
+                    localStorage.removeItem('sb-vdtokaamdrvyzchtepjy-auth-token'); 
                     try { await supabaseClient.auth.signOut(); } catch(e) {}
                     window.location.href = 'index.html?logged_out=1';
                 },
@@ -482,29 +616,56 @@
                     }
                 },
 
-                reviewApplication(applicant) { this.selectedApplicant = applicant; this.isReviewOpen = true; },
+                reviewApplication(applicant) { 
+                    this.selectedApplicant = applicant; 
+                    this.isReviewOpen = true; 
+                },
 
                 approveApplicant(id) {
                     const applicant = this.applications.find(a => a.id === id);
+                    
                     if(applicant) {
                         this.applications = this.applications.filter(a => a.id !== id);
                         this.isReviewOpen = false;
-                        this.activeTutors.unshift({ id: applicant.id, name: applicant.name, strand: applicant.strand, hourlyRate: applicant.hourlyRate });
+                        
+                        this.activeTutors.unshift({
+                            id: applicant.id,
+                            name: applicant.name,
+                            strand: applicant.strand,
+                            hourlyRate: applicant.hourlyRate
+                        });
+
                         this.saveState(); 
                         this.showToast(`Approved ${applicant.name}. Added to live website!`, 'success');
                         
-                        const payload = { type: 'new_tutor_approved', tutor: { id: applicant.id, name: applicant.name, strand: applicant.strand, bio: applicant.bio, subjects: applicant.subjects, schedule: [{ day: "To Be Announced", time: "TBA" }], hourlyRate: applicant.hourlyRate, headerColor: "bg-gray-800" } };
+                        const payload = {
+                            type: 'new_tutor_approved',
+                            tutor: {
+                                id: applicant.id,
+                                name: applicant.name,
+                                strand: applicant.strand,
+                                bio: applicant.bio,
+                                subjects: applicant.subjects,
+                                schedule: [{ day: "To Be Announced", time: "TBA" }], 
+                                hourlyRate: applicant.hourlyRate,
+                                headerColor: "bg-gray-800"
+                            }
+                        };
+                        
                         this.mqttClient.publish('studyio/system/new_tutor_approved', JSON.stringify(payload), { retain: true });
                     }
                 },
 
                 rejectApplicant(id) {
                     const applicant = this.applications.find(a => a.id === id);
+                    
                     if(applicant) {
                         this.applications = this.applications.filter(a => a.id !== id);
                         this.isReviewOpen = false;
+                        
                         this.saveState(); 
                         this.showToast(`Application for ${applicant.name} was rejected.`, 'error');
+                        
                         this.mqttClient.publish('studyio/system/application_rejected', JSON.stringify({ id: id }), { retain: true });
                     }
                 },
@@ -513,6 +674,7 @@
                     if(confirm("Are you sure you want to permanently remove this tutor from the platform?")) {
                         this.activeTutors = this.activeTutors.filter(t => t.id !== id);
                         this.saveState(); 
+                        
                         this.mqttClient.publish('studyio/system/delete_tutor', JSON.stringify({ type: 'delete_tutor', id: id }), { retain: true });
                         this.showToast("Tutor successfully removed from platform.", "error");
                     }
@@ -521,7 +683,10 @@
                 showToast(message, type) {
                     const id = Date.now();
                     this.toasts.push({ id, message, type });
-                    setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, 4000);
+                    
+                    setTimeout(() => { 
+                        this.toasts = this.toasts.filter(t => t.id !== id); 
+                    }, 4000);
                 }
             }
         }
